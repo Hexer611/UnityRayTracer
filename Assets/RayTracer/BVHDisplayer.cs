@@ -16,13 +16,13 @@ public class BVHDisplayer : MonoBehaviour
     public Text textLeafMaxTris;
     public Text textLeafAVGTris;
 
-    int leaves = 0;
-    int minLeafDepth = 0;
-    int maxLeafDepth = 0;
-    int avgLeafDepth = 0;
-    int minTris = 0;
-    int maxTris = 0;
-    int avgTris = 0;
+    float leaves = 0;
+    float minLeafDepth = 0;
+    float maxLeafDepth = 0;
+    float avgLeafDepth = 0;
+    float minTris = 0;
+    float maxTris = 0;
+    float avgTris = 0;
 
     public void Display(BVH bvh)
     {
@@ -36,13 +36,12 @@ public class BVHDisplayer : MonoBehaviour
 
         foreach(var item in bvh.nodes)
         {
-            minTris = Mathf.Min(item.triangleCount, minTris);
-            maxTris = Mathf.Max(item.triangleCount, maxTris);
-            avgTris += item.triangleCount;
-
             if (item.childIndex == 0)
             {
                 leaves ++;
+                minTris = Mathf.Min(item.triangleCount, minTris);
+                maxTris = Mathf.Max(item.triangleCount, maxTris);
+                avgTris += item.triangleCount;
             }
         }
 

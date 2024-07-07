@@ -119,7 +119,7 @@ Shader "Custom/RayTracingShader"
 			StructuredBuffer<MeshInfo> Meshes;
 			StructuredBuffer<BVHNode> Nodes;
 
-			bool NoBoundsHit(Ray ray, float3 boxMin, float3 boxMax)
+			float NoBoundsHit(Ray ray, float3 boxMin, float3 boxMax)
 			{
 				float3 invDir = 1 / ray.dir;
 				float3 tMin = (boxMin - ray.origin) * invDir;
@@ -128,7 +128,9 @@ Shader "Custom/RayTracingShader"
 				float3 t2 = max(tMin, tMax);
 				float tNear = max(max(t1.x, t1.y), t1.z);
 				float tFar = min(min(t2.x, t2.y), t2.z);
-				return tNear > tFar;
+
+				bool didhit = tFar >= tNear;
+				return didhit ? tNear : 1.#INF;
 			}
 
 			HitInfo RaySphere(Ray ray, float3 center, float radius)
@@ -183,40 +185,51 @@ Shader "Custom/RayTracingShader"
 				return hitInfo;
 			}
 
-			HitInfo BVHRayCollision(BVHNode node, Ray ray, inout int2 stats, int startIndex = 0)
+			HitInfo BVHRayCollision(int firstNodeIndex, Ray ray, inout int2 stats, int startIndex = 0)
 			{
-				BVHNode nodeStack[32];
+				int nodeIndexStack[32];
 				int stackIndex = 0;
-				nodeStack[stackIndex++] = node;
+				nodeIndexStack[stackIndex++] = firstNodeIndex;
 
 				HitInfo hitInfo;
 				hitInfo.dst = 1.#INF;
 
 				while (stackIndex > 0)
 				{
-					BVHNode curNode = nodeStack[--stackIndex];
+					BVHNode curNode = Nodes[nodeIndexStack[--stackIndex]];
 
-					stats[0]++;
-					if (!NoBoundsHit(ray, curNode.Bounds.Min, curNode.Bounds.Max))
+					if (curNode.childIndex == startIndex)
 					{
-						if (curNode.childIndex == startIndex)
+						stats[1] += curNode.triangleCount;
+						for (int i = curNode.triangleIndex; i < curNode.triangleIndex + curNode.triangleCount; i++)
 						{
-							stats[1] += curNode.triangleCount;
-							for (int i = curNode.triangleIndex; i < curNode.triangleIndex + curNode.triangleCount; i++)
-							{
-								Triangle tri = Triangles[i];
-								HitInfo triHitInfo = RayTriangle(ray, tri);
+							Triangle tri = Triangles[i];
+							HitInfo triHitInfo = RayTriangle(ray, tri);
 								
-								if (triHitInfo.didHit && triHitInfo.dst < hitInfo.dst)
-								{
-									hitInfo = triHitInfo;
-								}
+							if (triHitInfo.didHit && triHitInfo.dst < hitInfo.dst)
+							{
+								hitInfo = triHitInfo;
 							}
+						}
+					}
+					else
+					{
+						stats[0]+=2;
+						BVHNode Child1 = Nodes[curNode.childIndex + 0];
+						BVHNode Child2 = Nodes[curNode.childIndex + 1];
+							
+						float dst1 = NoBoundsHit(ray, Child1.Bounds.Min, Child1.Bounds.Max);
+						float dst2 = NoBoundsHit(ray, Child2.Bounds.Min, Child2.Bounds.Max);
+
+						if (dst1 > dst2)
+						{
+							if (dst1 < hitInfo.dst) nodeIndexStack[stackIndex++] = curNode.childIndex + 0;
+							if (dst2 < hitInfo.dst) nodeIndexStack[stackIndex++] = curNode.childIndex + 1;
 						}
 						else
 						{
-							nodeStack[stackIndex++] = Nodes[curNode.childIndex + 1];
-							nodeStack[stackIndex++] = Nodes[curNode.childIndex + 0];
+							if (dst2 < hitInfo.dst) nodeIndexStack[stackIndex++] = curNode.childIndex + 1;
+							if (dst1 < hitInfo.dst) nodeIndexStack[stackIndex++] = curNode.childIndex + 0;
 						}
 					}
 				}
@@ -246,7 +259,7 @@ Shader "Custom/RayTracingShader"
 					MeshInfo meshInfo = Meshes[i];
 					BVHNode firstNode = Nodes[meshInfo.nodesStartIndex];
 
-					HitInfo hitInfo = BVHRayCollision(firstNode, ray, stats, 0);
+					HitInfo hitInfo = BVHRayCollision(meshInfo.nodesStartIndex, ray, stats, 0);
 					if (hitInfo.didHit && hitInfo.dst < closestHit.dst)
 					{
 						closestHit = hitInfo;

@@ -12,6 +12,7 @@ public class RayTracerCamera : MonoBehaviour
     public int MaxBounceCount;
     public int NumberOfRaysPerPixel;
     public bool render;
+    public bool accumulate;
     public Material rayTracingMaterial;
     public Material accumulateMaterial;
     public RayTracedObject[] sphereTransforms;
@@ -74,24 +75,30 @@ public class RayTracerCamera : MonoBehaviour
                 resultTexture.filterMode = FilterMode.Bilinear;
             }
 
-            RenderTexture prevFrameCopy = RenderTexture.GetTemporary(source.width, source.height, 0, GraphicsFormat.R32G32B32A32_SFloat);
-            Graphics.Blit(resultTexture, prevFrameCopy);
 
-            rayTracingMaterial.SetInt("Frame", frame);
-            RenderTexture curFrameCopy = RenderTexture.GetTemporary(source.width, source.height, 0, GraphicsFormat.R32G32B32A32_SFloat);
-            Graphics.Blit(null, curFrameCopy, rayTracingMaterial);
+            if (accumulate)
+            {
+                RenderTexture prevFrameCopy = RenderTexture.GetTemporary(source.width, source.height, 0, GraphicsFormat.R32G32B32A32_SFloat);
+                Graphics.Blit(resultTexture, prevFrameCopy);
 
-            accumulateMaterial.SetInt("_Frame", frame);
-            accumulateMaterial.SetTexture("_PrevFrame", prevFrameCopy);
-            Graphics.Blit(curFrameCopy, resultTexture, accumulateMaterial);
+                rayTracingMaterial.SetInt("Frame", frame);
+                RenderTexture curFrameCopy = RenderTexture.GetTemporary(source.width, source.height, 0, GraphicsFormat.R32G32B32A32_SFloat);
+                Graphics.Blit(null, curFrameCopy, rayTracingMaterial);
 
-            Graphics.Blit(resultTexture, destination);
+                accumulateMaterial.SetInt("_Frame", frame);
+                accumulateMaterial.SetTexture("_PrevFrame", prevFrameCopy);
+                Graphics.Blit(curFrameCopy, resultTexture, accumulateMaterial);
 
-            RenderTexture.ReleaseTemporary(curFrameCopy);
-            RenderTexture.ReleaseTemporary(prevFrameCopy);
-            RenderTexture.ReleaseTemporary(curFrameCopy);
+                Graphics.Blit(resultTexture, destination);
 
-            frame += Application.isPlaying ? 1 : 0;
+                RenderTexture.ReleaseTemporary(curFrameCopy);
+                RenderTexture.ReleaseTemporary(prevFrameCopy);
+                RenderTexture.ReleaseTemporary(curFrameCopy);
+
+                frame += Application.isPlaying ? 1 : 0;
+            }
+            else
+                Graphics.Blit(null, destination, rayTracingMaterial);
         }
         else
             Graphics.Blit(source, destination); ;

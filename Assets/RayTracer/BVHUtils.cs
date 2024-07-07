@@ -65,7 +65,7 @@ public class BVH
 
     public void Split(ref BVHNode parent, int depth = 0)
     {
-        if (depth == MAXDEPTH) return;
+        if (depth > 32) return;
 
         var child1 = new BVHNode();
         var child2 = new BVHNode();
@@ -107,8 +107,11 @@ public class BVH
             }
         }
 
-        Split(ref child1, depth + 1);
-        Split(ref child2, depth + 1);
+        if (child1.triangleCount > 0 && child2.triangleCount > 0)
+        {
+            Split(ref child1, depth + 1);
+            Split(ref child2, depth + 1);
+        }
     }
 
     public void DrawNodes(BVHNode node, Ray ray, int depth = 0)
