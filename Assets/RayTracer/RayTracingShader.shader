@@ -79,7 +79,6 @@ Shader "Custom/RayTracingShader"
 			{
 				float3 Min;
 				float3 Max;
-				float3 Center;
 			};
 
 			struct BVHNode
@@ -185,7 +184,7 @@ Shader "Custom/RayTracingShader"
 				return hitInfo;
 			}
 
-			HitInfo BVHRayCollision(int firstNodeIndex, Ray ray, inout int2 stats, int startIndex = 0)
+			HitInfo BVHRayCollision(int firstNodeIndex, Ray ray, inout int2 stats)
 			{
 				int nodeIndexStack[32];
 				int stackIndex = 0;
@@ -198,7 +197,7 @@ Shader "Custom/RayTracingShader"
 				{
 					BVHNode curNode = Nodes[nodeIndexStack[--stackIndex]];
 
-					if (curNode.childIndex == startIndex)
+					if (curNode.childIndex == firstNodeIndex)
 					{
 						stats[1] += curNode.triangleCount;
 						for (int i = curNode.triangleIndex; i < curNode.triangleIndex + curNode.triangleCount; i++)
@@ -259,7 +258,7 @@ Shader "Custom/RayTracingShader"
 					MeshInfo meshInfo = Meshes[i];
 					BVHNode firstNode = Nodes[meshInfo.nodesStartIndex];
 
-					HitInfo hitInfo = BVHRayCollision(meshInfo.nodesStartIndex, ray, stats, 0);
+					HitInfo hitInfo = BVHRayCollision(meshInfo.nodesStartIndex, ray, stats);
 					if (hitInfo.didHit && hitInfo.dst < closestHit.dst)
 					{
 						closestHit = hitInfo;
@@ -355,7 +354,7 @@ Shader "Custom/RayTracingShader"
 						
 						float p = max(rayColor.r, max(rayColor.g, rayColor.b));
 						if (RandomValue(rngState) >= p) {
-							//break;
+							break;
 						}
 						rayColor *= 1.0f / p;
 						//hasHit = true;
