@@ -12,3 +12,5 @@ Possible future implementations;
 - Textures
 
 Current state of the implementation is giving ok results. I will be trying to implement this method in C/C++ and WebGPU first so current state of the repository will wait for a while.
+Lastly this implementation can render this image;
+![image](https://github.com/Hexer611/UnityRayTracer/assets/32894909/0d2c8082-95a9-4223-bf1f-132e62e3c618)
