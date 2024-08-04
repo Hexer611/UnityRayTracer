@@ -3,6 +3,7 @@ using UnityEngine;
 public class RayTracedMesh : MonoBehaviour
 {
     public bool _initialized = false;
+    public bool drawGismos = false;
     public Color color;
     public Color emissionColor;
     public float emissionStrength;
@@ -25,6 +26,7 @@ public class RayTracedMesh : MonoBehaviour
 
     public SPTriangle[] SPTriangles;
     public Bounds bounds;
+    [HideInInspector]
     public BVH bvh;
     public BVHDisplayer bvhDisplayer;
     public int visualDepth;
@@ -61,18 +63,19 @@ public class RayTracedMesh : MonoBehaviour
         {
             int trigIndex = j;
 
-            SPTriangles[trigIndex] = new SPTriangle();
-            SPTriangles[trigIndex].posA = mesh.vertices[mesh.triangles[j]];
-            SPTriangles[trigIndex].posB = mesh.vertices[mesh.triangles[j + 1]];
-            SPTriangles[trigIndex].posC = mesh.vertices[mesh.triangles[j + 2]];
+            var pA = mesh.vertices[mesh.triangles[j]];
+            var pB = mesh.vertices[mesh.triangles[j + 1]];
+            var pC = mesh.vertices[mesh.triangles[j + 2]];
 
-            SPTriangles[trigIndex].posA = transform.TransformPoint(SPTriangles[trigIndex].posA);
-            SPTriangles[trigIndex].posB = transform.TransformPoint(SPTriangles[trigIndex].posB);
-            SPTriangles[trigIndex].posC = transform.TransformPoint(SPTriangles[trigIndex].posC);
+            SPTriangles[trigIndex] = new SPTriangle(
+                transform.TransformPoint(SPTriangles[trigIndex].posA),
+                transform.TransformPoint(SPTriangles[trigIndex].posB),
+                transform.TransformPoint(SPTriangles[trigIndex].posC),
 
-            SPTriangles[trigIndex].normalA = DirectionLocalToWorld(mesh.normals[mesh.triangles[j]], rot);
-            SPTriangles[trigIndex].normalB = DirectionLocalToWorld(mesh.normals[mesh.triangles[j + 1]], rot);
-            SPTriangles[trigIndex].normalC = DirectionLocalToWorld(mesh.normals[mesh.triangles[j + 2]], rot);
+                DirectionLocalToWorld(mesh.normals[mesh.triangles[j]], rot),
+                DirectionLocalToWorld(mesh.normals[mesh.triangles[j + 1]], rot),
+                DirectionLocalToWorld(mesh.normals[mesh.triangles[j + 2]], rot)
+            );
 
             boundMin = Vector3.Min(boundMin, SPTriangles[trigIndex].posA);
             boundMax = Vector3.Max(boundMax, SPTriangles[trigIndex].posA);
@@ -88,6 +91,7 @@ public class RayTracedMesh : MonoBehaviour
 
     public void CreateBVH()
     {
+        var startTime = Time.time;
         meshFilter = GetComponent<MeshFilter>();
         meshRenderer = GetComponent<MeshRenderer>();
         mesh = meshFilter.sharedMesh;
@@ -139,6 +143,8 @@ public class RayTracedMesh : MonoBehaviour
     public int drawTriangleCount;
     private void OnDrawGizmos()
     {
+        if (!drawGismos)
+            return;
         if (rayGo == null)
             return;
         
@@ -151,20 +157,5 @@ public class RayTracedMesh : MonoBehaviour
             var ray = new Ray(rayGo.position, rayGo.forward);
             bvh.DrawNodes(bvh.root, ray);
         }
-        return;
-        var _drawTriangleCount = Mathf.Min(drawTriangleCount, triangleCount);
-        var bvhBounds = new BVHBoundingBox();
-
-        for (int i = 0; i < _drawTriangleCount; i++)
-        {
-            Gizmos.DrawSphere((SPTriangles[i].posA + SPTriangles[i].posB + SPTriangles[i].posC) / 3, 0.01f);
-            bvhBounds.GrowToInclude(SPTriangles[i]);
-        }
-
-        Gizmos.color = new Color(1, 0, 0, 1f);
-        Gizmos.DrawWireCube((bvhBounds.Max + bvhBounds.Min) / 2, bvhBounds.Max - bvhBounds.Min);
-
-        Gizmos.color = new Color(1,0,0,0.4f);
-        Gizmos.DrawCube((bvhBounds.Max + bvhBounds.Min) / 2, bvhBounds.Max - bvhBounds.Min);
     }
 }

@@ -51,7 +51,7 @@ public class BVHDisplayer : MonoBehaviour
 
         avgLeafDepth = avgLeafDepth / leaves;
 
-        textTime.text = bvh.time.ToString();
+        textTime.text = (bvh.time * 1000).ToString() + " ms";
         textTriangles.text = bvh.allTriangles.Count.ToString();
         textNodes.text = bvh.nodes.Count.ToString();
         textLeaves.text = leaves.ToString();

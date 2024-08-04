@@ -151,7 +151,7 @@ public class RayTracerCamera : MonoBehaviour
         int lastTrigIndex = 0;
 
         List<SBVHNode> nodes = new List<SBVHNode>();
-        List<SPTriangle> tris = new List<SPTriangle>();
+        List<ShaderTriangle> tris = new List<ShaderTriangle>();
 
         int curTriangleIndex = 0;
         int curNodeIndex = 0;
@@ -188,7 +188,10 @@ public class RayTracerCamera : MonoBehaviour
             }
             curNodeIndex = nodes.Count;
 
-            tris.AddRange(meshTransform.bvh.allTriangles);
+            foreach (var item in meshTransform.bvh.allTriangles)
+            {
+                tris.Add(new ShaderTriangle(item));
+            }
             curTriangleIndex = tris.Count;
             meshes.Add(newMesh);
         }
@@ -319,5 +322,110 @@ public struct SPTriangle
 {
     public Vector3 posA, posB, posC;
     public Vector3 normalA, normalB, normalC;
-    public Vector3 Center => (posA + posB + posC) / 3;
+
+    Vector3 _min;
+    Vector3 _max;
+    Vector3 _center;
+    Vector3 _normal;
+
+    public SPTriangle(Vector3 _posA, Vector3 _posB, Vector3 _posC)
+    {
+        posA = _posA;
+        posB = _posB;
+        posC = _posC;
+
+        normalA = Vector3.zero;
+        normalB = Vector3.zero;
+        normalC = Vector3.zero;
+
+        _min = Vector3.zero;
+        _max = Vector3.zero;
+        _center = Vector3.zero;
+        _normal = Vector3.zero;
+
+        Recalculate();
+    }
+
+    public SPTriangle(Vector3 _posA, Vector3 _posB, Vector3 _posC, Vector3 _normalA, Vector3 _normalB, Vector3 _normalC)
+    {
+        posA = _posA;
+        posB = _posB;
+        posC = _posC;
+
+        normalA = _normalA;
+        normalB = _normalB;
+        normalC = _normalC;
+
+        _min = Vector3.zero;
+        _max = Vector3.zero;
+        _center = Vector3.zero;
+        _normal = Vector3.zero;
+
+        Recalculate();
+    }
+
+    void Recalculate()
+    {
+        float minX = Mathf.Min(Mathf.Min(posA.x, posB.x), posC.x);
+        float minY = Mathf.Min(Mathf.Min(posA.y, posB.y), posC.y);
+        float minZ = Mathf.Min(Mathf.Min(posA.z, posB.z), posC.z);
+        _min = new Vector3(minX, minY, minZ);
+
+        float maxX = Mathf.Max(Mathf.Max(posA.x, posB.x), posC.x);
+        float maxY = Mathf.Max(Mathf.Max(posA.y, posB.y), posC.y);
+        float maxZ = Mathf.Max(Mathf.Max(posA.z, posB.z), posC.z);
+        _max = new Vector3(maxX, maxY, maxZ);
+
+        _center = (posA + posB + posC) / 3.0f;
+
+        Vector3 A = posB - posA;
+        Vector3 B = posC - posA;
+        _normal = Vector3.Cross(A, B);
+        _normal = _normal.normalized;
+    }
+
+    public Vector3 Min()
+    {
+        return _min;
+    }
+    public Vector3 Max()
+    {
+        return _max;
+    }
+    public Vector3 Center()
+    {
+        return _center;
+    }
+    public Vector3 Normal()
+    {
+        return _normal;
+    }
+}
+
+[Serializable]
+public struct ShaderTriangle
+{
+    public Vector3 posA, posB, posC;
+    public Vector3 normalA, normalB, normalC;
+
+    public ShaderTriangle(Vector3 _posA, Vector3 _posB, Vector3 _posC, Vector3 _normalA, Vector3 _normalB, Vector3 _normalC)
+    {
+        posA = _posA;
+        posB = _posB;
+        posC = _posC;
+
+        normalA = _normalA;
+        normalB = _normalB;
+        normalC = _normalC;
+    }
+
+    public ShaderTriangle(SPTriangle triangle)
+    {
+        posA = triangle.posA;
+        posB = triangle.posB;
+        posC = triangle.posC;
+        normalA = triangle.normalA;
+        normalB = triangle.normalB;
+        normalC = triangle.normalC;
+    }
 }
