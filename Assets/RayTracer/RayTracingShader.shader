@@ -64,6 +64,7 @@ Shader "Custom/RayTracingShader"
 				float smoothness;
 				float specularProbability;
 				float4 specularColor;
+				float opacity;
 			};
 
 			struct HitInfo
@@ -117,6 +118,44 @@ Shader "Custom/RayTracingShader"
 			StructuredBuffer<Triangle> Triangles;
 			StructuredBuffer<MeshInfo> Meshes;
 			StructuredBuffer<BVHNode> Nodes;
+
+			
+			// PCG (permuted congruential generator). Thanks to:
+			// www.pcg-random.org and www.shadertoy.com/view/XlGcRh
+			uint NextRandom(inout uint state)
+			{
+				state = state * 747796405 + 2891336453;
+				uint result = ((state >> ((state >> 28) + 4)) ^ state) * 277803737;
+				result = (result >> 22) ^ result;
+				return result;
+			}
+
+			float RandomValue(inout uint state)
+			{
+				return NextRandom(state) / 4294967295.0;
+			}
+
+			float RandomValueNormalDistribution(inout uint state) // inout sets the variable state for outside too
+			{
+				float theta = 2 * 3.1415926 * RandomValue(state);
+				float rho = sqrt(-2 * log(RandomValue(state)));
+				return rho * cos(theta);
+			}
+
+			float3 RandomDirection(inout int state)
+			{
+				float x = RandomValueNormalDistribution(state);
+				float y = RandomValueNormalDistribution(state);
+				float z = RandomValueNormalDistribution(state);
+				
+				return normalize(float3(x,y,z));
+			}
+
+			float3 RandomHemisphereDirection(float3 normal, inout uint rngState)
+			{
+				float3 dir = RandomDirection(rngState);
+				return dir * sign(dot(normal, dir));
+			}
 
 			float NoBoundsHit(Ray ray, float3 boxMin, float3 boxMax)
 			{
@@ -236,7 +275,7 @@ Shader "Custom/RayTracingShader"
 				return hitInfo;
 			}
 
-			HitInfo CalculateRayCollision (Ray ray, inout int2 stats)
+			HitInfo CalculateRayCollision (Ray ray, inout int2 stats, inout int rngState)
 			{
 				HitInfo closestHit = (HitInfo)0;
 				closestHit.dst = 1.#INF;
@@ -269,43 +308,6 @@ Shader "Custom/RayTracingShader"
 				return closestHit;
 			}
 
-			// PCG (permuted congruential generator). Thanks to:
-			// www.pcg-random.org and www.shadertoy.com/view/XlGcRh
-			uint NextRandom(inout uint state)
-			{
-				state = state * 747796405 + 2891336453;
-				uint result = ((state >> ((state >> 28) + 4)) ^ state) * 277803737;
-				result = (result >> 22) ^ result;
-				return result;
-			}
-
-			float RandomValue(inout uint state)
-			{
-				return NextRandom(state) / 4294967295.0;
-			}
-
-			float RandomValueNormalDistribution(inout uint state) // inout sets the variable state for outside too
-			{
-				float theta = 2 * 3.1415926 * RandomValue(state);
-				float rho = sqrt(-2 * log(RandomValue(state)));
-				return rho * cos(theta);
-			}
-
-			float3 RandomDirection(inout int state)
-			{
-				float x = RandomValueNormalDistribution(state);
-				float y = RandomValueNormalDistribution(state);
-				float z = RandomValueNormalDistribution(state);
-				
-				return normalize(float3(x,y,z));
-			}
-
-			float3 RandomHemisphereDirection(float3 normal, inout uint rngState)
-			{
-				float3 dir = RandomDirection(rngState);
-				return dir * sign(dot(normal, dir));
-			}
-
 			float3 GetEnvironmentLight(Ray ray)
 			{
 				float skyGradientT = pow(smoothstep(0, 0.4, ray.dir.y), 0.35);
@@ -336,7 +338,7 @@ Shader "Custom/RayTracingShader"
 
 				for (int i = 0; i <= MaxBounceCount; i++)
 				{
-					HitInfo hitInfo = CalculateRayCollision(ray, stats);
+					HitInfo hitInfo = CalculateRayCollision(ray, stats, rngState);
 
 					if (hitInfo.didHit)
 					{
@@ -346,6 +348,9 @@ Shader "Custom/RayTracingShader"
 						float3 diffuseDir = normalize(hitInfo.normal + RandomDirection(rngState));
 						float3 specularDir = reflect(ray.dir, hitInfo.normal);
 						ray.dir = normalize(lerp(diffuseDir, specularDir, material.smoothness * isSpecularBounce));
+						
+						if (hitInfo.material.opacity > RandomValue(rngState))
+							ray.dir = normalize(-hitInfo.normal + RandomDirection(rngState)*0.01);
 
 						float3 emittedLight =  material.emissionColor * material.emissionStrength;
 						incomingLight += emittedLight * rayColor;

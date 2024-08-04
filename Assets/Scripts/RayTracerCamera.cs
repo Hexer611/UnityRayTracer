@@ -173,6 +173,7 @@ public class RayTracerCamera : MonoBehaviour
             newMesh.material.smoothness = meshTransform.smoothness;
             newMesh.material.specularProbability = meshTransform.specularProbability;
             newMesh.material.specularColor = meshTransform.specularColor;
+            newMesh.material.opacity = meshTransform.opacity;
 
             lastTrigIndex += newMesh.trigCount;
 
@@ -296,6 +297,7 @@ public struct SPMaterial
     public float smoothness;
     public float specularProbability;
     public Color specularColor;
+    public float opacity;
 }
 
 [Serializable]

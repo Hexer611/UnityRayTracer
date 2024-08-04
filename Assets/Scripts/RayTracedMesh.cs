@@ -10,6 +10,7 @@ public class RayTracedMesh : MonoBehaviour
     public float smoothness;
     public float specularProbability;
     public Color specularColor;
+    public float opacity;
 
     public MeshFilter meshFilter;
     public MeshRenderer meshRenderer;
