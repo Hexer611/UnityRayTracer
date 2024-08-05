@@ -210,7 +210,7 @@ public class RayTracerCamera : MonoBehaviour
         if (sphereTransforms.Length > 0)
         {
             if (sphereBuffer == null)
-                sphereBuffer = new ComputeBuffer(sphereTransforms.Length, 13 * sizeof(float), ComputeBufferType.Default);
+                sphereBuffer = new ComputeBuffer(sphereTransforms.Length, 20 * sizeof(float), ComputeBufferType.Default);
             sphereBuffer.SetData(spheres);
             rayTracingMaterial.SetBuffer("Spheres", sphereBuffer);
         }

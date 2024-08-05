@@ -243,7 +243,19 @@ Shader "Custom/RayTracingShader"
 						{
 							Triangle tri = Triangles[i];
 							HitInfo triHitInfo = RayTriangle(ray, tri);
+							if (!triHitInfo.didHit)
+							{
+								Triangle invTri;
+								invTri.posA = tri.posC;
+								invTri.posB = tri.posB;
+								invTri.posC = tri.posA;
 								
+								invTri.normalA = -tri.normalA;
+								invTri.normalB = -tri.normalB;
+								invTri.normalC = -tri.normalC;
+								triHitInfo = RayTriangle(ray, invTri);
+							}
+
 							if (triHitInfo.didHit && triHitInfo.dst < hitInfo.dst)
 							{
 								hitInfo = triHitInfo;
@@ -271,16 +283,27 @@ Shader "Custom/RayTracingShader"
 						}
 					}
 				}
-				
 				return hitInfo;
 			}
 
-			HitInfo CalculateRayCollision (Ray ray, inout int2 stats, inout int rngState)
+			HitInfo CalculateRayCollision (Ray ray, inout int2 stats, bool hasHit)
 			{
 				HitInfo closestHit = (HitInfo)0;
 				closestHit.dst = 1.#INF;
 
-				for (int i = 0; i < NumSpheres; i++)
+				if (hasHit) // This is point light maan
+				{
+					Sphere sphere = Spheres[0];
+					HitInfo hitInfo = RaySphere(ray, sphere.position, sphere.radius);
+
+					if (hitInfo.didHit && hitInfo.dst < closestHit.dst)
+					{
+						closestHit = hitInfo;
+						closestHit.material = sphere.material;
+					}
+				}
+
+				/*for (int i = 0; i < NumSpheres; i++)
 				{
 					Sphere sphere = Spheres[i];
 					HitInfo hitInfo = RaySphere(ray, sphere.position, sphere.radius);
@@ -290,7 +313,7 @@ Shader "Custom/RayTracingShader"
 						closestHit = hitInfo;
 						closestHit.material = sphere.material;
 					}
-				}
+				}*/
 
 				for (int i = 0; i < NumMeshes; i++)
 				{
@@ -333,12 +356,13 @@ Shader "Custom/RayTracingShader"
 			{
 				float3 incomingLight = 0;
 				float3 rayColor = 1;
-				//bool hasHit = false;
+				bool hasHit = false;
 				int2 stats = 0;
+				int opacityBounces = 16;
 
 				for (int i = 0; i <= MaxBounceCount; i++)
 				{
-					HitInfo hitInfo = CalculateRayCollision(ray, stats, rngState);
+					HitInfo hitInfo = CalculateRayCollision(ray, stats, hasHit);
 
 					if (hitInfo.didHit)
 					{
@@ -350,7 +374,14 @@ Shader "Custom/RayTracingShader"
 						ray.dir = normalize(lerp(diffuseDir, specularDir, material.smoothness * isSpecularBounce));
 						
 						if (hitInfo.material.opacity > RandomValue(rngState))
-							ray.dir = normalize(-hitInfo.normal + RandomDirection(rngState)*0.01);
+						{
+							if (opacityBounces-- > 0)
+								ray.dir = normalize(-hitInfo.normal + RandomDirection(rngState)*0.10);
+							else
+								ray.dir = normalize(hitInfo.normal + RandomDirection(rngState)*0.10);
+						}
+
+						ray.origin += ray.dir * 0.0001f;
 
 						float3 emittedLight =  material.emissionColor * material.emissionStrength;
 						incomingLight += emittedLight * rayColor;
@@ -362,7 +393,7 @@ Shader "Custom/RayTracingShader"
 							break;
 						}
 						rayColor *= 1.0f / p;
-						//hasHit = true;
+						hasHit = true;
 					}
 					else
 					{
