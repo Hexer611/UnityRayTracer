@@ -371,20 +371,24 @@ Shader "Custom/RayTracingShader"
 					if (hitInfo.didHit)
 					{
 						ray.origin = hitInfo.hitPoint;
+
+						if (hitInfo.material.opacity > RandomValue(rngState))
+						{
+							if (opacityBounces-- > 0)
+								ray.dir = refract(ray.dir, hitInfo.normal, 1/1.2) + RandomDirection(rngState) * 0.0;
+							else
+								ray.dir = normalize(hitInfo.normal + RandomDirection(rngState)*0.00);
+
+							ray.origin += ray.dir * 0.0001f;
+							continue;
+						}
+
 						RayTracingMaterial material = hitInfo.material;
 						bool isSpecularBounce = material.specularProbability >= RandomValue(rngState);
 						float3 diffuseDir = normalize(hitInfo.normal + RandomDirection(rngState));
 						float3 specularDir = reflect(ray.dir, hitInfo.normal);
 						ray.dir = normalize(lerp(diffuseDir, specularDir, material.smoothness * isSpecularBounce));
 						
-						if (hitInfo.material.opacity > RandomValue(rngState))
-						{
-							//if (opacityBounces-- > 0)
-								ray.dir = refract(ray.dir, hitInfo.normal, 0.0);// + RandomDirection(rngState)*0.00);
-							//else
-								//ray.dir = normalize(hitInfo.normal + RandomDirection(rngState)*0.00);
-						}
-
 						ray.origin += ray.dir * 0.00001f;
 
 						float3 emittedLight =  material.emissionColor * material.emissionStrength;

@@ -64,7 +64,7 @@ public class RayTracerCamera : MonoBehaviour
         {
             if (resultTexture == null || !resultTexture.IsCreated())
             {
-                resultTexture = new RenderTexture(Screen.width, Screen.height, 1);
+                resultTexture = new RenderTexture(source.width, source.height, 1);
                 resultTexture.graphicsFormat = GraphicsFormat.R32G32B32A32_SFloat;
                 resultTexture.enableRandomWrite = true;
                 resultTexture.autoGenerateMips = false;
