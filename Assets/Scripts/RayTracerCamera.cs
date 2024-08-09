@@ -28,16 +28,18 @@ public class RayTracerCamera : MonoBehaviour
 
     private ComputeBuffer sphereBuffer;
     private ComputeBuffer meshBuffer;
-    private ComputeBuffer triangleBuffer;
+    private ComputeBuffer computeBufferNodes;
+    private ComputeBuffer computeBufferTrigs;
 
     public SPTriangle[] trigs;
     public List<SPMesh> meshes;
 
     private void Start()
     {
-        triangleBuffer = null;
         meshBuffer = null;
         sphereBuffer = null;
+        computeBufferNodes = null;
+        computeBufferTrigs = null;
     }
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
@@ -90,7 +92,6 @@ public class RayTracerCamera : MonoBehaviour
 
                 RenderTexture.ReleaseTemporary(curFrameCopy);
                 RenderTexture.ReleaseTemporary(prevFrameCopy);
-                RenderTexture.ReleaseTemporary(curFrameCopy);
 
                 frame += Application.isPlaying ? 1 : 0;
             }
@@ -217,42 +218,14 @@ public class RayTracerCamera : MonoBehaviour
         
         if (meshes.Count > 0)
         {
-            /*
-            if (meshBuffer == null)
-                meshBuffer = new ComputeBuffer(meshes.Length, 15 * sizeof(float) + 2 * sizeof(int), ComputeBufferType.Default);
-            meshBuffer.SetData(meshes);*/
             CreateStructuredBuffer(ref meshBuffer, meshes);
             rayTracingMaterial.SetBuffer("Meshes", meshBuffer);
 
-
-            ComputeBuffer computeBufferNodes = null;
             CreateStructuredBuffer(ref computeBufferNodes, nodes);
             rayTracingMaterial.SetBuffer("Nodes", computeBufferNodes);
 
-            int fef = 0;
-            foreach (var item in tris)
-            {
-                if (fef++ > -1)
-                    break;
-                Debug.Log(item.normalA);
-                Debug.Log(item.normalB);
-                Debug.Log(item.normalC);
-            }
-            ComputeBuffer computeBufferTrigs = null;
             CreateStructuredBuffer(ref computeBufferTrigs, tris);
             rayTracingMaterial.SetBuffer("Triangles", computeBufferTrigs);
-        }
-
-        if (trigs.Length > 0)
-        {
-            /*
-            if (triangleBuffer == null)
-                triangleBuffer = new ComputeBuffer(trigs.Length, 18 * sizeof(float), ComputeBufferType.Default);
-            triangleBuffer.SetData(new List<SPTriangle>(trigs));
-            */
-
-            //CreateStructuredBuffer(ref triangleBuffer, new List<SPTriangle>(trigs));
-            //rayTracingMaterial.SetBuffer("Triangles", triangleBuffer);
         }
 
         rayTracingMaterial.SetInt("NumSpheres", sphereTransforms.Length);
@@ -270,7 +243,10 @@ public class RayTracerCamera : MonoBehaviour
         // If buffer is null, wrong size, etc., then we'll need to create a new one
         if (buffer == null || !buffer.IsValid() || buffer.count != length || buffer.stride != stride)
         {
-            if (buffer != null) { buffer.Release(); }
+            if (buffer != null)
+            { 
+                buffer.Release();
+            }
             buffer = new ComputeBuffer(length, stride, ComputeBufferType.Structured);
         }
 
@@ -283,8 +259,10 @@ public class RayTracerCamera : MonoBehaviour
             sphereBuffer.Release();
         if (meshBuffer != null)
             meshBuffer.Release();
-        if (triangleBuffer != null)
-            triangleBuffer.Release();
+        if (computeBufferNodes != null)
+            computeBufferNodes.Release();
+        if (computeBufferTrigs != null)
+            computeBufferTrigs.Release();
     }
 }
 
