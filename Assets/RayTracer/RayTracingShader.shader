@@ -243,22 +243,25 @@ Shader "Custom/RayTracingShader"
 						{
 							Triangle tri = Triangles[i];
 							HitInfo triHitInfo = RayTriangle(ray, tri);
-							if (!triHitInfo.didHit)
-							{
-								Triangle invTri;
-								invTri.posA = tri.posC;
-								invTri.posB = tri.posB;
-								invTri.posC = tri.posA;
-								
-								invTri.normalA = -tri.normalA;
-								invTri.normalB = -tri.normalB;
-								invTri.normalC = -tri.normalC;
-								triHitInfo = RayTriangle(ray, invTri);
-							}
 
+							Triangle invTri;
+							invTri.posA = tri.posC;
+							invTri.posB = tri.posB;
+							invTri.posC = tri.posA;
+
+							invTri.normalA = -tri.normalC;
+							invTri.normalB = -tri.normalB;
+							invTri.normalC = -tri.normalA;
+							
 							if (triHitInfo.didHit && triHitInfo.dst < hitInfo.dst)
 							{
 								hitInfo = triHitInfo;
+							}
+
+							HitInfo invTriHitInfo = RayTriangle(ray, invTri);
+							if (!hitInfo.didHit && invTriHitInfo.didHit && invTriHitInfo.dst < hitInfo.dst)
+							{
+								hitInfo = invTriHitInfo;
 							}
 						}
 					}
@@ -352,6 +355,7 @@ Shader "Custom/RayTracingShader"
 				return lerp(GroundColor, skyGradient, groundToSkyT) + sun * sunMask;
 			}
 
+
 			float3 Trace(Ray ray, inout uint rngState)
 			{
 				float3 incomingLight = 0;
@@ -375,13 +379,13 @@ Shader "Custom/RayTracingShader"
 						
 						if (hitInfo.material.opacity > RandomValue(rngState))
 						{
-							if (opacityBounces-- > 0)
-								ray.dir = normalize(-hitInfo.normal + RandomDirection(rngState)*0.10);
-							else
-								ray.dir = normalize(hitInfo.normal + RandomDirection(rngState)*0.10);
+							//if (opacityBounces-- > 0)
+								ray.dir = refract(ray.dir, hitInfo.normal, 0.0);// + RandomDirection(rngState)*0.00);
+							//else
+								//ray.dir = normalize(hitInfo.normal + RandomDirection(rngState)*0.00);
 						}
 
-						ray.origin += ray.dir * 0.0001f;
+						ray.origin += ray.dir * 0.00001f;
 
 						float3 emittedLight =  material.emissionColor * material.emissionStrength;
 						incomingLight += emittedLight * rayColor;
