@@ -295,6 +295,7 @@ public class BVHBoundingBox
     }
 }
 
+[Serializable]
 public struct SBVHNode
 {
     public SBVHBoundingBox Bounds;
@@ -303,6 +304,7 @@ public struct SBVHNode
     public int triangleCount;
 }
 
+[Serializable]
 public struct SBVHBoundingBox
 {
     public Vector3 Min;

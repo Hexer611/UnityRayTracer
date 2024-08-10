@@ -7,6 +7,7 @@ using UnityEngine.Experimental.Rendering;
 [ExecuteAlways, ImageEffectAllowedInSceneView]
 public class RayTracerCamera : MonoBehaviour
 {
+    public bool calculate = false;
     public int MaxBounceCount;
     public int NumberOfRaysPerPixel;
     public bool render;
@@ -15,6 +16,14 @@ public class RayTracerCamera : MonoBehaviour
     public Material accumulateMaterial;
     public RayTracedObject[] sphereTransforms;
     public RayTracedMesh[] meshTransforms;
+
+    [HideInInspector]
+    public List<SBVHNode> nodes = new List<SBVHNode>();
+    [HideInInspector]
+    public List<ShaderTriangle> tris = new List<ShaderTriangle>();
+    [HideInInspector]
+    public List<SPMesh> meshes = new List<SPMesh>();
+
     public Light directionalLight;
     public float sunFocus;
     public Color skyColorHorizon;
@@ -30,9 +39,6 @@ public class RayTracerCamera : MonoBehaviour
     private ComputeBuffer meshBuffer;
     private ComputeBuffer computeBufferNodes;
     private ComputeBuffer computeBufferTrigs;
-
-    public SPTriangle[] trigs;
-    public List<SPMesh> meshes;
 
     private void Start()
     {
@@ -102,11 +108,8 @@ public class RayTracerCamera : MonoBehaviour
             Graphics.Blit(source, destination);
     }
 
-    public bool update = false;
     private void UpdateCameraParams(Camera camera)
     {
-        if (!update)
-            return;
         var cameraNear = camera.nearClipPlane;
         var cameraFOV = camera.fieldOfView;
         var cameraAspect = camera.aspect;
@@ -145,68 +148,13 @@ public class RayTracerCamera : MonoBehaviour
             spheres[i].material.smoothness = sphereTransforms[i].smoothness;
         }
 
-        if (meshTransforms == null || meshTransforms.Length == 0)
-            meshTransforms = FindObjectsOfType<RayTracedMesh>();
+        //if (meshTransforms == null || meshTransforms.Length == 0)
+        //    meshTransforms = FindObjectsOfType<RayTracedMesh>();
 
-        meshes = new List<SPMesh>();
-        int lastTrigIndex = 0;
-
-        List<SBVHNode> nodes = new List<SBVHNode>();
-        List<ShaderTriangle> tris = new List<ShaderTriangle>();
-
-        int curTriangleIndex = 0;
-        int curNodeIndex = 0;
-
-        foreach (var meshTransform in meshTransforms)
+        if ( meshTransforms == null || meshTransforms.Length == 0 )
         {
-            meshTransform.Initialize();
-            var newMesh = new SPMesh();
-            newMesh.trigCount = meshTransform.triangleCount;
-            newMesh.firstTrig = lastTrigIndex;
-            newMesh.boundsMin = meshTransform.bounds.min;
-            newMesh.boundsMax = meshTransform.bounds.max;
-
-            newMesh.nodesStartIndex = curNodeIndex;
-
-            newMesh.material.color = meshTransform.color;
-            newMesh.material.emissionColor = meshTransform.emissionColor;
-            newMesh.material.emissionStrength = meshTransform.emissionStrength;
-            newMesh.material.smoothness = meshTransform.smoothness;
-            newMesh.material.specularProbability = meshTransform.specularProbability;
-            newMesh.material.specularColor = meshTransform.specularColor;
-            newMesh.material.opacity = meshTransform.opacity;
-
-            lastTrigIndex += newMesh.trigCount;
-
-            foreach (var item in meshTransform.bvh.nodes)
-            {
-                SBVHNode sNode = new SBVHNode();
-                sNode.triangleIndex = item.triangleIndex + curTriangleIndex;
-                sNode.triangleCount = item.triangleCount;
-                sNode.childIndex = item.childIndex + curNodeIndex;
-                sNode.Bounds = new SBVHBoundingBox(item.Bounds.Min, item.Bounds.Max);
-                nodes.Add(sNode);
-
-            }
-            curNodeIndex = nodes.Count;
-
-            foreach (var item in meshTransform.bvh.allTriangles)
-            {
-                tris.Add(new ShaderTriangle(item));
-            }
-            curTriangleIndex = tris.Count;
-            meshes.Add(newMesh);
+            meshTransforms = RayTracedMeshUtils.GetRaytracedMeshesFromScene(out nodes, out tris, out meshes);
         }
-
-        /*
-        trigs = new SPTriangle[lastTrigIndex];
-        lastTrigIndex = 0;
-        for (int i = 0;i < meshTransforms.Length;i++)
-        {
-            Array.Copy(meshTransforms[i].SPTriangles, 0, trigs, lastTrigIndex, meshTransforms[i].triangleCount);
-            lastTrigIndex += meshTransforms[i].triangleCount;
-        }
-        */
 
         if (sphereTransforms.Length > 0)
         {
@@ -230,7 +178,6 @@ public class RayTracerCamera : MonoBehaviour
 
         rayTracingMaterial.SetInt("NumSpheres", sphereTransforms.Length);
         rayTracingMaterial.SetInt("NumMeshes", meshes.Count);
-        rayTracingMaterial.SetInt("NumTriangles", trigs.Length);
     }
 
     public static void CreateStructuredBuffer<T>(ref ComputeBuffer buffer, List<T> data) where T : struct
@@ -253,7 +200,7 @@ public class RayTracerCamera : MonoBehaviour
         buffer.SetData(data);
     }
 
-    private void OnDisable()
+    private void OnDestroy()
     {
         if (sphereBuffer != null)
             sphereBuffer.Release();

@@ -1,8 +1,6 @@
-using System;
 using UnityEngine;
 
-[Serializable]
-public class RayTracedMesh
+public class RayTracedMeshGO : MonoBehaviour
 {
     public bool _initialized = false;
     public bool drawGismos = false;
