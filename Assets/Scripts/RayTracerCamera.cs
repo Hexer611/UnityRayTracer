@@ -17,13 +17,6 @@ public class RayTracerCamera : MonoBehaviour
     public RayTracedObject[] sphereTransforms;
     public RayTracedMesh[] meshTransforms;
 
-    [HideInInspector]
-    public List<SBVHNode> nodes = new List<SBVHNode>();
-    [HideInInspector]
-    public List<ShaderTriangle> tris = new List<ShaderTriangle>();
-    [HideInInspector]
-    public List<SPMesh> meshes = new List<SPMesh>();
-
     public Light directionalLight;
     public float sunFocus;
     public Color skyColorHorizon;
@@ -39,6 +32,9 @@ public class RayTracerCamera : MonoBehaviour
     private ComputeBuffer meshBuffer;
     private ComputeBuffer computeBufferNodes;
     private ComputeBuffer computeBufferTrigs;
+
+    [SerializeField]
+    private MeshMono meshMono;
 
     private void Start()
     {
@@ -110,6 +106,9 @@ public class RayTracerCamera : MonoBehaviour
 
     private void UpdateCameraParams(Camera camera)
     {
+        if (meshMono == null)
+            return;
+
         var cameraNear = camera.nearClipPlane;
         var cameraFOV = camera.fieldOfView;
         var cameraAspect = camera.aspect;
@@ -151,11 +150,6 @@ public class RayTracerCamera : MonoBehaviour
         //if (meshTransforms == null || meshTransforms.Length == 0)
         //    meshTransforms = FindObjectsOfType<RayTracedMesh>();
 
-        if ( meshTransforms == null || meshTransforms.Length == 0 )
-        {
-            meshTransforms = RayTracedMeshUtils.GetRaytracedMeshesFromScene(out nodes, out tris, out meshes);
-        }
-
         if (sphereTransforms.Length > 0)
         {
             if (sphereBuffer == null)
@@ -163,21 +157,21 @@ public class RayTracerCamera : MonoBehaviour
             sphereBuffer.SetData(spheres);
             rayTracingMaterial.SetBuffer("Spheres", sphereBuffer);
         }
-        
-        if (meshes.Count > 0)
+
+        if (meshMono.meshes.Count > 0)
         {
-            CreateStructuredBuffer(ref meshBuffer, meshes);
+            CreateStructuredBuffer(ref meshBuffer, meshMono.meshes);
             rayTracingMaterial.SetBuffer("Meshes", meshBuffer);
 
-            CreateStructuredBuffer(ref computeBufferNodes, nodes);
+            CreateStructuredBuffer(ref computeBufferNodes, meshMono.nodes);
             rayTracingMaterial.SetBuffer("Nodes", computeBufferNodes);
 
-            CreateStructuredBuffer(ref computeBufferTrigs, tris);
+            CreateStructuredBuffer(ref computeBufferTrigs, meshMono.tris);
             rayTracingMaterial.SetBuffer("Triangles", computeBufferTrigs);
         }
 
         rayTracingMaterial.SetInt("NumSpheres", sphereTransforms.Length);
-        rayTracingMaterial.SetInt("NumMeshes", meshes.Count);
+        rayTracingMaterial.SetInt("NumMeshes", meshMono.meshes.Count);
     }
 
     public static void CreateStructuredBuffer<T>(ref ComputeBuffer buffer, List<T> data) where T : struct

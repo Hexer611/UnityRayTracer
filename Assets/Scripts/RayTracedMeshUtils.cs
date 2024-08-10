@@ -20,11 +20,11 @@ public static class RayTracedMeshUtils
         foreach (var item in GameObject.FindObjectsOfType<MeshRenderer>())
         {
             RayTracedMesh rMesh = null;
+            rMesh = GetRTMFromMeshRenderer(item);
             //MeshPairs.TryGetValue(item, out rMesh);
 
             if (rMesh == null)
             {
-                rMesh = GetRTMFromMeshRenderer(item);
                 //MeshPairs.Add(item, rMesh);
             }
 
@@ -82,7 +82,7 @@ public static class RayTracedMeshUtils
         var meshFilter = target.GetComponent<MeshFilter>();
         var rayTracedMesh = new RayTracedMesh();
         BVH meshBVH = null;
-        MeshBVHPairs.TryGetValue(meshFilter.sharedMesh, out meshBVH);
+        //MeshBVHPairs.TryGetValue(meshFilter.sharedMesh, out meshBVH);
         if (meshBVH == null)
         {
             GetBVHFromMesh(meshFilter, out meshBVH);
@@ -93,7 +93,7 @@ public static class RayTracedMeshUtils
         var material = target.sharedMaterial;
         rayTracedMesh.color = material.GetColor("_Color");
         rayTracedMesh.smoothness = 1;
-        rayTracedMesh.specularProbability = 1 - material.GetFloat("_SpecularHighlights");
+        rayTracedMesh.specularProbability = material.GetFloat("_Glossiness");
         rayTracedMesh.specularColor = Color.white;
         rayTracedMesh.opacity = 1 - material.GetColor("_Color").a;
         rayTracedMesh.emissionColor = material.GetColor("_EmissionColor");
