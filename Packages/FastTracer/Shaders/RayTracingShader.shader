@@ -375,7 +375,7 @@ Shader "Custom/RayTracingShader"
 						if (hitInfo.material.opacity > RandomValue(rngState))
 						{
 							if (opacityBounces-- > 0)
-								ray.dir = refract(ray.dir, hitInfo.normal, 1/1.2) + RandomDirection(rngState) * 0.0;
+								ray.dir = refract(ray.dir, hitInfo.normal, 1/1.5) + RandomDirection(rngState) * 0.0;
 							else
 								ray.dir = normalize(hitInfo.normal + RandomDirection(rngState)*0.00);
 

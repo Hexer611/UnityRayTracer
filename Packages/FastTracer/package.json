@@ -1,0 +1,16 @@
+{
+    "name": "com.hexer611.fasttracer",
+    "version": "0.1.0",
+    "displayName": "FastTracer",
+    "description": "Ray tracer module",
+    "unity": "2022.3",
+    "keywords": [
+        "raytracing",
+        "pathtracing",
+        "rendering"
+    ],
+    "author": {
+        "name": "Sukru Erdem Sahin",
+        "email": "sukruerdemsahin@gmail.com"
+    }
+}

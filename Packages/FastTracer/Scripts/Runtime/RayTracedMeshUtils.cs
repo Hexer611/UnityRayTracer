@@ -97,7 +97,7 @@ public static class RayTracedMeshUtils
         rayTracedMesh.specularColor = Color.white;
         rayTracedMesh.opacity = 1 - material.GetColor("_Color").a;
         rayTracedMesh.emissionColor = material.GetColor("_EmissionColor");
-        rayTracedMesh.emissionStrength = 10;
+        rayTracedMesh.emissionStrength = 1;
 
         rayTracedMesh.meshFilter = meshFilter;
         rayTracedMesh.meshRenderer = target;

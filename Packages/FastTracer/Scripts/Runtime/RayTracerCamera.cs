@@ -7,7 +7,6 @@ using UnityEngine.Experimental.Rendering;
 [ExecuteAlways, ImageEffectAllowedInSceneView]
 public class RayTracerCamera : MonoBehaviour
 {
-    public bool calculate = false;
     public int MaxBounceCount;
     public int NumberOfRaysPerPixel;
     public bool render;
@@ -35,6 +34,10 @@ public class RayTracerCamera : MonoBehaviour
 
     [SerializeField]
     private MeshMono meshMono;
+    [SerializeField]
+    private Camera targetCamera;
+    [SerializeField]
+    private RenderTexture targetTexture;
 
     private void Start()
     {
@@ -43,30 +46,22 @@ public class RayTracerCamera : MonoBehaviour
         computeBufferNodes = null;
         computeBufferTrigs = null;
     }
-    private void OnRenderImage(RenderTexture source, RenderTexture destination)
+
+    private void Update()
     {
-        bool isSceneCam = Camera.current.name == "SceneCamera";
-        UpdateCameraParams(Camera.current);
-
-        if (isSceneCam)
-        {
-            Graphics.Blit(source, destination);return;
-            if (render)
-            {
-                Graphics.Blit(null, destination, rayTracingMaterial);
-            }
-            else
-            {
-                Graphics.Blit(source, destination); // Draw the unaltered camera render to the screen
-            }
+        if (targetCamera == null)
             return;
-        }
+        if (targetTexture == null)
+            return;
 
-        if (render)
+        int textureWidth = targetTexture.width;
+        int textureHeight = targetTexture.height;
+
+        if (targetCamera.activeTexture == null)
         {
             if (resultTexture == null || !resultTexture.IsCreated())
             {
-                resultTexture = new RenderTexture(source.width, source.height, 1);
+                resultTexture = new RenderTexture(textureWidth, textureHeight, 1);
                 resultTexture.graphicsFormat = GraphicsFormat.R32G32B32A32_SFloat;
                 resultTexture.enableRandomWrite = true;
                 resultTexture.autoGenerateMips = false;
@@ -77,20 +72,27 @@ public class RayTracerCamera : MonoBehaviour
                 resultTexture.filterMode = FilterMode.Bilinear;
             }
 
+            targetCamera.targetTexture = targetTexture;
+        }
+
+        UpdateCameraParams(targetCamera);
+
+        if (render)
+        {
             if (accumulate)
             {
-                RenderTexture prevFrameCopy = RenderTexture.GetTemporary(source.width, source.height, 0, GraphicsFormat.R32G32B32A32_SFloat);
+                RenderTexture prevFrameCopy = RenderTexture.GetTemporary(textureWidth, textureHeight, 0, GraphicsFormat.R32G32B32A32_SFloat);
                 Graphics.Blit(resultTexture, prevFrameCopy);
 
                 rayTracingMaterial.SetInt("Frame", frame);
-                RenderTexture curFrameCopy = RenderTexture.GetTemporary(source.width, source.height, 0, GraphicsFormat.R32G32B32A32_SFloat);
+                RenderTexture curFrameCopy = RenderTexture.GetTemporary(textureWidth, textureHeight, 0, GraphicsFormat.R32G32B32A32_SFloat);
                 Graphics.Blit(null, curFrameCopy, rayTracingMaterial);
 
                 accumulateMaterial.SetInt("_Frame", frame);
                 accumulateMaterial.SetTexture("_PrevFrame", prevFrameCopy);
                 Graphics.Blit(curFrameCopy, resultTexture, accumulateMaterial);
 
-                Graphics.Blit(resultTexture, destination);
+                Graphics.Blit(resultTexture, targetTexture);
 
                 RenderTexture.ReleaseTemporary(curFrameCopy);
                 RenderTexture.ReleaseTemporary(prevFrameCopy);
@@ -98,10 +100,8 @@ public class RayTracerCamera : MonoBehaviour
                 frame += Application.isPlaying ? 1 : 0;
             }
             else
-                Graphics.Blit(null, destination, rayTracingMaterial);
+                Graphics.Blit(null, targetTexture, rayTracingMaterial);
         }
-        else
-            Graphics.Blit(source, destination);
     }
 
     private void UpdateCameraParams(Camera camera)
