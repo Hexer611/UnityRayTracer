@@ -17,6 +17,7 @@ Shader "Custom/RayTracingShader"
 			#include "UnityCG.cginc"
 
 			float3 ViewParams;
+			float3 CameraPosition;
 			float4x4 CamLocalToWorldMatrix;
 			int NumSpheres;
 			int NumMeshes;
@@ -461,7 +462,7 @@ Shader "Custom/RayTracingShader"
 				float3 viewPoint = mul(CamLocalToWorldMatrix, float4(viewPointLocal, 1));
 
 				Ray ray;
-				ray.origin = _WorldSpaceCameraPos;
+				ray.origin = CameraPosition;
 				ray.dir = normalize(viewPoint - ray.origin);
 				// #
 

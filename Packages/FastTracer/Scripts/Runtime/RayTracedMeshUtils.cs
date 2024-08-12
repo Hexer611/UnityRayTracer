@@ -8,7 +8,7 @@ public static class RayTracedMeshUtils
     public static Dictionary<Mesh, BVH> MeshBVHPairs = new Dictionary<Mesh, BVH>();
     public static Dictionary<MeshRenderer, RayTracedMesh> MeshPairs = new Dictionary<MeshRenderer, RayTracedMesh>();
 
-    public static RayTracedMesh[] GetRaytracedMeshesFromScene(out List<SBVHNode> nodes, out List<ShaderTriangle> tris, out List<SPMesh> meshes)
+    public static RayTracedMesh[] GetRaytracedMeshesFromScene(LayerMask cameraMask, out List<SBVHNode> nodes, out List<ShaderTriangle> tris, out List<SPMesh> meshes)
     {
         var meshTransforms = new List<RayTracedMesh>();
         nodes = new List<SBVHNode>();
@@ -19,8 +19,15 @@ public static class RayTracedMeshUtils
 
         foreach (var item in GameObject.FindObjectsOfType<MeshRenderer>())
         {
+            if (!item.gameObject.activeInHierarchy)
+                continue;
+            if (!item.enabled)
+                continue;
+            if ((cameraMask & (1 << item.gameObject.layer)) == 0)
+                continue;
             RayTracedMesh rMesh = null;
             rMesh = GetRTMFromMeshRenderer(item);
+
             //MeshPairs.TryGetValue(item, out rMesh);
 
             if (rMesh == null)

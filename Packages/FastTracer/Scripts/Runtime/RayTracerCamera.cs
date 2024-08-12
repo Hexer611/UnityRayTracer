@@ -35,7 +35,7 @@ public class RayTracerCamera : MonoBehaviour
     [SerializeField]
     private MeshMono meshMono;
     [SerializeField]
-    private Camera targetCamera;
+    private Camera myCamera;
     [SerializeField]
     private RenderTexture targetTexture;
 
@@ -49,7 +49,7 @@ public class RayTracerCamera : MonoBehaviour
 
     private void Update()
     {
-        if (targetCamera == null)
+        if (myCamera == null)
             return;
         if (targetTexture == null)
             return;
@@ -57,25 +57,20 @@ public class RayTracerCamera : MonoBehaviour
         int textureWidth = targetTexture.width;
         int textureHeight = targetTexture.height;
 
-        if (targetCamera.activeTexture == null)
+        if (resultTexture == null || !resultTexture.IsCreated())
         {
-            if (resultTexture == null || !resultTexture.IsCreated())
-            {
-                resultTexture = new RenderTexture(textureWidth, textureHeight, 1);
-                resultTexture.graphicsFormat = GraphicsFormat.R32G32B32A32_SFloat;
-                resultTexture.enableRandomWrite = true;
-                resultTexture.autoGenerateMips = false;
-                resultTexture.useMipMap = false;
-                resultTexture.Create();
+            resultTexture = new RenderTexture(textureWidth, textureHeight, 1);
+            resultTexture.graphicsFormat = GraphicsFormat.R32G32B32A32_SFloat;
+            resultTexture.enableRandomWrite = true;
+            resultTexture.autoGenerateMips = false;
+            resultTexture.useMipMap = false;
+            resultTexture.Create();
 
-                resultTexture.wrapMode = TextureWrapMode.Clamp;
-                resultTexture.filterMode = FilterMode.Bilinear;
-            }
-
-            targetCamera.targetTexture = targetTexture;
+            resultTexture.wrapMode = TextureWrapMode.Clamp;
+            resultTexture.filterMode = FilterMode.Bilinear;
         }
 
-        UpdateCameraParams(targetCamera);
+        UpdateCameraParams(myCamera);
 
         if (render)
         {
@@ -102,6 +97,8 @@ public class RayTracerCamera : MonoBehaviour
             else
                 Graphics.Blit(null, targetTexture, rayTracingMaterial);
         }
+        else
+            targetTexture.Release();
     }
 
     private void UpdateCameraParams(Camera camera)
@@ -117,6 +114,7 @@ public class RayTracerCamera : MonoBehaviour
         float planeWidth = planeHeight * cameraAspect;
 
         rayTracingMaterial.SetVector("ViewParams", new Vector3(planeWidth, planeHeight, cameraNear));
+        rayTracingMaterial.SetVector("CameraPosition", camera.transform.position);
         rayTracingMaterial.SetMatrix("CamLocalToWorldMatrix", camera.transform.localToWorldMatrix);
         rayTracingMaterial.SetInt("MaxBounceCount", MaxBounceCount);
         rayTracingMaterial.SetInt("NumberOfRaysPerPixel", NumberOfRaysPerPixel);

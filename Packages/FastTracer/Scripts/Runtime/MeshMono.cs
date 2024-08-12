@@ -4,6 +4,7 @@ using UnityEngine;
 
 public class MeshMono : MonoBehaviour
 {
+    public Camera targetCamera;
     [HideInInspector]
     public List<SBVHNode> nodes = new List<SBVHNode>();
     [HideInInspector]
@@ -22,7 +23,7 @@ public class MeshMono : MonoBehaviour
     public void CreateBVH()
     {
         Debug.Log("start");
-        meshTransforms = RayTracedMeshUtils.GetRaytracedMeshesFromScene(out nodes, out tris, out meshes);
+        meshTransforms = RayTracedMeshUtils.GetRaytracedMeshesFromScene(targetCamera.cullingMask, out nodes, out tris, out meshes);
         Debug.Log("end");
     }
 }
