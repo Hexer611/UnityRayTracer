@@ -19,6 +19,8 @@ public static class RayTracedMeshUtils
 
         foreach (var item in GameObject.FindObjectsOfType<MeshRenderer>())
         {
+            if (item.GetComponent<MeshFilter>() == null)
+                continue;
             if (!item.gameObject.activeInHierarchy)
                 continue;
             if (!item.enabled)

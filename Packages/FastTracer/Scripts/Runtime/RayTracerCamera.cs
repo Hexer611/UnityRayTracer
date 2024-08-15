@@ -11,7 +11,9 @@ public class RayTracerCamera : MonoBehaviour
     public int NumberOfRaysPerPixel;
     public bool render;
     public bool accumulate;
+    public bool composite;
     public Material rayTracingMaterial;
+    public Material compositeMaterial;
     public Material accumulateMaterial;
     public RayTracedObject[] sphereTransforms;
     public RayTracedMesh[] meshTransforms;
@@ -26,6 +28,7 @@ public class RayTracerCamera : MonoBehaviour
 
     public int frame = 0;
     public RenderTexture resultTexture;
+    public RenderTexture compositeResultTexture;
 
     private ComputeBuffer sphereBuffer;
     private ComputeBuffer meshBuffer;
@@ -70,6 +73,19 @@ public class RayTracerCamera : MonoBehaviour
             resultTexture.filterMode = FilterMode.Bilinear;
         }
 
+        if (compositeResultTexture == null || !compositeResultTexture.IsCreated())
+        {
+            compositeResultTexture = new RenderTexture(textureWidth, textureHeight, 1);
+            compositeResultTexture.graphicsFormat = GraphicsFormat.R32G32B32A32_SFloat;
+            compositeResultTexture.enableRandomWrite = true;
+            compositeResultTexture.autoGenerateMips = false;
+            compositeResultTexture.useMipMap = false;
+            compositeResultTexture.Create();
+
+            compositeResultTexture.wrapMode = TextureWrapMode.Clamp;
+            compositeResultTexture.filterMode = FilterMode.Bilinear;
+        }
+
         UpdateCameraParams(myCamera);
 
         if (render)
@@ -96,6 +112,12 @@ public class RayTracerCamera : MonoBehaviour
             }
             else
                 Graphics.Blit(null, targetTexture, rayTracingMaterial);
+            if (composite)
+            {
+                compositeMaterial.SetTexture("ColorTexture", myCamera.targetTexture);
+                compositeMaterial.SetTexture("LightTexture", targetTexture);
+                Graphics.Blit(null, compositeResultTexture, compositeMaterial);
+            }
         }
         else
             targetTexture.Release();
