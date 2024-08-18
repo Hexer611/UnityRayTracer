@@ -5,6 +5,7 @@ Shader "Custom/RayTracingShader"
 	Properties
 	{
 		[Enum(Box,0,Tri,1,MergeVis,2,Render,3)] _testType ("Test Type", Int) = 0
+        _textures ("Tex", 2DArray) = "" {}
 		_boxThreshold ("Box Thres", Float) = 1
 		_triThreshold ("Tri Thres", Float) = 1
 	}
@@ -66,6 +67,15 @@ Shader "Custom/RayTracingShader"
 				float specularProbability;
 				float4 specularColor;
 				float opacity;
+				float diffuseIndex;
+			};
+			
+			struct Triangle
+			{
+				float3 posA, posB, posC;
+				float3 normalA, normalB, normalC;
+
+			    float2 uvA, uvB, uvC;
 			};
 
 			struct HitInfo
@@ -74,6 +84,7 @@ Shader "Custom/RayTracingShader"
 				float dst;
 				float3 hitPoint;
 				float3 normal;
+				float2 uv;
 				RayTracingMaterial material;
 			};
 
@@ -100,12 +111,6 @@ Shader "Custom/RayTracingShader"
 				float3 boundsMax;
 				RayTracingMaterial material;
 			};
-			
-			struct Triangle
-			{
-				float3 posA, posB, posC;
-				float3 normalA, normalB, normalC;
-			};
 
 			struct Sphere
 			{
@@ -120,6 +125,7 @@ Shader "Custom/RayTracingShader"
 			StructuredBuffer<MeshInfo> Meshes;
 			StructuredBuffer<BVHNode> Nodes;
 
+			UNITY_DECLARE_TEX2DARRAY(_textures);
 			
 			// PCG (permuted congruential generator). Thanks to:
 			// www.pcg-random.org and www.shadertoy.com/view/XlGcRh
@@ -221,6 +227,7 @@ Shader "Custom/RayTracingShader"
 				hitInfo.hitPoint = ray.origin + ray.dir * dst;
 				hitInfo.normal = normalize(tri.normalA * w + tri.normalB * u + tri.normalC * v);
 				hitInfo.dst = dst;
+				hitInfo.uv = (tri.uvA * w + tri.uvB * u + tri.uvC * v);
 				return hitInfo;
 			}
 
@@ -253,6 +260,10 @@ Shader "Custom/RayTracingShader"
 							invTri.normalA = -tri.normalC;
 							invTri.normalB = -tri.normalB;
 							invTri.normalC = -tri.normalA;
+
+							invTri.uvA = tri.uvC;
+							invTri.uvB = tri.uvB;
+							invTri.uvC = tri.uvA;
 							
 							if (triHitInfo.didHit && triHitInfo.dst < hitInfo.dst)
 							{
@@ -365,15 +376,24 @@ Shader "Custom/RayTracingShader"
 				int2 stats = 0;
 				int opacityBounces = 16;
 
-				for (int i = 0; i <= MaxBounceCount; i++)
+				for (int i = 0; i <= 6; i++)
 				{
 					HitInfo hitInfo = CalculateRayCollision(ray, stats, hasHit);
 
 					if (hitInfo.didHit)
 					{
 						ray.origin = hitInfo.hitPoint;
+						//Triangle tri = hitInfo.hitTriangle;
+						//hitInfo.material.color = tex2D(_Diffuse, normalize(tri.uvA * hitInfo.w + tri.uvB * hitInfo.u + tri.uvC * hitInfo.v));
+						if (hitInfo.material.diffuseIndex == -1)
+							hitInfo.material.color = hitInfo.material.color;
+						else
+							hitInfo.material.color = UNITY_SAMPLE_TEX2DARRAY(_textures, float3(hitInfo.uv.x, hitInfo.uv.y, hitInfo.material.diffuseIndex));
+						//hitInfo.material.color = float4(hitInfo.uv, 1, 1);
+						RayTracingMaterial material = hitInfo.material;
 
-						if (hitInfo.material.opacity > RandomValue(rngState))
+						float opacity = 1 - material.color.a;
+						if (opacity > RandomValue(rngState))
 						{
 							if (opacityBounces-- > 0)
 								ray.dir = refract(ray.dir, hitInfo.normal, 1/1.5) + RandomDirection(rngState) * 0.0;
@@ -384,7 +404,6 @@ Shader "Custom/RayTracingShader"
 							continue;
 						}
 
-						RayTracingMaterial material = hitInfo.material;
 						bool isSpecularBounce = material.specularProbability >= RandomValue(rngState);
 						float3 diffuseDir = normalize(hitInfo.normal + RandomDirection(rngState));
 						float3 specularDir = reflect(ray.dir, hitInfo.normal);

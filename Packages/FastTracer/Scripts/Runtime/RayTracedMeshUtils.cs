@@ -17,6 +17,7 @@ public static class RayTracedMeshUtils
         tris = new List<ShaderTriangle>();
         meshes = new List<SPMesh>();
         textures = new List<Texture2D>();
+        textureIndices = new Dictionary<Texture2D, int>();
 
         //return meshTransforms.ToArray();
 
@@ -59,19 +60,35 @@ public static class RayTracedMeshUtils
             newMesh.nodesStartIndex = curNodeIndex;
 
             var material = meshTransform.meshRenderer.sharedMaterial;
+            Texture2D curDiffuse;
 
-            newMesh.material.color = material.GetColor("_BaseColor");
-            newMesh.material.emissionColor = material.GetColor("_EmissionColor");
-            newMesh.material.emissionStrength = material.GetFloat("_EmissiveIntensity");
-            newMesh.material.smoothness = material.GetFloat("_Smoothness");
-            newMesh.material.specularProbability = material.GetFloat("_Smoothness");
-            newMesh.material.specularColor = Color.white;
-            newMesh.material.opacity = 0;
-            //newMesh.material.opacity = 1 - material.GetColor("_Color").a;
+            if (material.HasTexture("_FabricBaseMap"))
+            {
+                newMesh.material.color = Color.white;
+                newMesh.material.emissionColor = Color.white;
+                newMesh.material.emissionStrength = 0;
+                newMesh.material.smoothness = 0;
+                newMesh.material.specularProbability = 0;
+                newMesh.material.specularColor = Color.white;
+                newMesh.material.opacity = 0;
+                //newMesh.material.opacity = 1 - material.GetColor("_Color").a;
+                curDiffuse = material.GetTexture("_FabricBaseMap") as Texture2D;
+            }
+            else
+            {
+                newMesh.material.color = material.GetColor("_BaseColor");
+                newMesh.material.emissionColor = material.GetColor("_EmissionColor");
+                newMesh.material.emissionStrength = material.GetFloat("_EmissiveIntensity");
+                newMesh.material.smoothness = material.GetFloat("_Smoothness");
+                newMesh.material.specularProbability = material.GetFloat("_Smoothness");
+                newMesh.material.specularColor = Color.white;
+                newMesh.material.opacity = 0;
+                //newMesh.material.opacity = 1 - material.GetColor("_Color").a;
+                curDiffuse = material.GetTexture("_BaseMap") as Texture2D;
+            }
 
-            var curDiffuse = material.GetTexture("_BaseMap") as Texture2D;
             Debug.Log(curDiffuse == null);
-            if (curDiffuse == null || curDiffuse.width != 2048 || curDiffuse.height != 2048)
+            if (curDiffuse == null)
                 newMesh.material.diffuseIndex = -1;
             else
             {

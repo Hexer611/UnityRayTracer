@@ -33,9 +33,6 @@ public class BVH
 
         SPTriangle[] triangles = new SPTriangle[tris.Length / 3];
         bool useUv = uvs.Length == vertices.Length;
-        Debug.Log(uvs.Length);
-        Debug.Log(vertices.Length);
-        Debug.Log(useUv);
 
         for (int i = 0; i < triangles.Length; i ++)
         {
@@ -60,9 +57,6 @@ public class BVH
                 uva = uvs[aIndex];
                 uvb = uvs[bIndex];
                 uvc = uvs[cIndex];
-                Debug.Log(uva);
-                Debug.Log(uvb);
-                Debug.Log(uvc);
             }
 
             triangles[i] = new SPTriangle(a, b, c, na, nb, nc, uva, uvb, uvc);
