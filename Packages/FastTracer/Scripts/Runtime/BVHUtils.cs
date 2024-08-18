@@ -19,7 +19,7 @@ public class BVH
     public BVHNode root = new BVHNode();
     public float time;
 
-    public BVH(Vector3[] vertices, int[] tris, Vector3[] normals, int maxDepth)
+    public BVH(Vector3[] vertices, int[] tris, Vector3[] normals, Vector2[] uvs, int maxDepth)
     {
         var startTime = Time.realtimeSinceStartup;
         MAXDEPTH = maxDepth;
@@ -32,18 +32,40 @@ public class BVH
         }
 
         SPTriangle[] triangles = new SPTriangle[tris.Length / 3];
+        bool useUv = uvs.Length == vertices.Length;
+        Debug.Log(uvs.Length);
+        Debug.Log(vertices.Length);
+        Debug.Log(useUv);
 
         for (int i = 0; i < triangles.Length; i ++)
         {
-            Vector3 a = vertices[tris[i*3 + 0]];
-            Vector3 b = vertices[tris[i*3 + 1]];
-            Vector3 c = vertices[tris[i*3 + 2]];
+            var aIndex = tris[i * 3 + 0];
+            var bIndex = tris[i * 3 + 1];
+            var cIndex = tris[i * 3 + 2];
 
-            Vector3 na = normals[tris[i * 3 + 0]];
-            Vector3 nb = normals[tris[i * 3 + 1]];
-            Vector3 nc = normals[tris[i * 3 + 2]];
+            Vector3 a = vertices[aIndex];
+            Vector3 b = vertices[bIndex];
+            Vector3 c = vertices[cIndex];
 
-            triangles[i] = new SPTriangle(a, b, c, na, nb, nc);
+            Vector3 na = normals[aIndex];
+            Vector3 nb = normals[bIndex];
+            Vector3 nc = normals[cIndex];
+
+            Vector2 uva = Vector2.zero;
+            Vector2 uvb = Vector2.zero;
+            Vector2 uvc = Vector2.zero;
+
+            if (useUv)
+            {
+                uva = uvs[aIndex];
+                uvb = uvs[bIndex];
+                uvc = uvs[cIndex];
+                Debug.Log(uva);
+                Debug.Log(uvb);
+                Debug.Log(uvc);
+            }
+
+            triangles[i] = new SPTriangle(a, b, c, na, nb, nc, uva, uvb, uvc);
         }
 
         root = new BVHNode();

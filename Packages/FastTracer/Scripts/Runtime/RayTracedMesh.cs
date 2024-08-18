@@ -20,6 +20,7 @@ public class RayTracedMesh
     public Vector3[] normals;
     private Vector3[] worldVertices;
     private Vector3[] worldNormals;
+    public Vector2[] uvs;
 
     public int MAXDEPTH;
     public int triangleCount;
@@ -101,6 +102,7 @@ public class RayTracedMesh
 
         var trigs = mesh.triangles;
         var verts = mesh.vertices;
+        var uvs = mesh.uv;
         var normals = mesh.normals;
 
         triangleCount = trigs.Length;
@@ -124,7 +126,7 @@ public class RayTracedMesh
             worldNormals[i3] = DirectionLocalToWorld(normals[i3], rot);
         }
 
-        bvh = new BVH(worldVertices, trigs, worldNormals, MAXDEPTH);
+        bvh = new BVH(worldVertices, trigs, worldNormals, uvs, MAXDEPTH);
         if (bvhDisplayer != null)
         {
             bvhDisplayer.Display(bvh);

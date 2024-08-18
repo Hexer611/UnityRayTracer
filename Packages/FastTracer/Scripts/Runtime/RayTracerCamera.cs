@@ -192,6 +192,7 @@ public class RayTracerCamera : MonoBehaviour
 
         rayTracingMaterial.SetInt("NumSpheres", sphereTransforms.Length);
         rayTracingMaterial.SetInt("NumMeshes", meshMono.meshes.Count);
+        rayTracingMaterial.SetTexture("_textures", meshMono.textureArray);
     }
 
     public static void CreateStructuredBuffer<T>(ref ComputeBuffer buffer, List<T> data) where T : struct
@@ -237,6 +238,8 @@ public struct SPMaterial
     public float specularProbability;
     public Color specularColor;
     public float opacity;
+
+    public float diffuseIndex;
 }
 
 [Serializable]
@@ -264,6 +267,8 @@ public struct SPTriangle
     public Vector3 posA, posB, posC;
     public Vector3 normalA, normalB, normalC;
 
+    public Vector2 uvA, uvB, uvC;
+
     Vector3 _min;
     Vector3 _max;
     Vector3 _center;
@@ -284,6 +289,10 @@ public struct SPTriangle
         _center = Vector3.zero;
         _normal = Vector3.zero;
 
+        uvA = Vector2.zero;
+        uvB = Vector2.zero;
+        uvC = Vector2.zero;
+
         Recalculate();
     }
 
@@ -301,6 +310,34 @@ public struct SPTriangle
         _max = Vector3.zero;
         _center = Vector3.zero;
         _normal = Vector3.zero;
+
+        uvA = Vector2.zero;
+        uvB = Vector2.zero;
+        uvC = Vector2.zero;
+
+        Recalculate();
+    }
+
+    public SPTriangle(Vector3 _posA, Vector3 _posB, Vector3 _posC, 
+                      Vector3 _normalA, Vector3 _normalB, Vector3 _normalC,
+                      Vector2 _uvA, Vector2 _uvB, Vector2 _uvC)
+    {
+        posA = _posA;
+        posB = _posB;
+        posC = _posC;
+
+        normalA = _normalA;
+        normalB = _normalB;
+        normalC = _normalC;
+
+        _min = Vector3.zero;
+        _max = Vector3.zero;
+        _center = Vector3.zero;
+        _normal = Vector3.zero;
+
+        uvA = _uvA;
+        uvB = _uvB;
+        uvC = _uvC;
 
         Recalculate();
     }
@@ -349,24 +386,20 @@ public struct ShaderTriangle
     public Vector3 posA, posB, posC;
     public Vector3 normalA, normalB, normalC;
 
-    public ShaderTriangle(Vector3 _posA, Vector3 _posB, Vector3 _posC, Vector3 _normalA, Vector3 _normalB, Vector3 _normalC)
-    {
-        posA = _posA;
-        posB = _posB;
-        posC = _posC;
-
-        normalA = _normalA;
-        normalB = _normalB;
-        normalC = _normalC;
-    }
+    public Vector2 uvA, uvB, uvC;
 
     public ShaderTriangle(SPTriangle triangle)
     {
         posA = triangle.posA;
         posB = triangle.posB;
         posC = triangle.posC;
+
         normalA = triangle.normalA;
         normalB = triangle.normalB;
         normalC = triangle.normalC;
+
+        uvA = triangle.uvA;
+        uvB = triangle.uvB;
+        uvC = triangle.uvC;
     }
 }

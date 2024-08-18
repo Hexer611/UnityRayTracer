@@ -99,6 +99,7 @@ public class RayTracedMeshGO : MonoBehaviour
 
         var trigs = mesh.triangles;
         var verts = mesh.vertices;
+        var uvs = mesh.uv;
         var normals = mesh.normals;
 
         triangleCount = trigs.Length;
@@ -122,7 +123,7 @@ public class RayTracedMeshGO : MonoBehaviour
             worldNormals[i3] = DirectionLocalToWorld(normals[i3], rot);
         }
 
-        bvh = new BVH(worldVertices, trigs, worldNormals, MAXDEPTH);
+        bvh = new BVH(worldVertices, trigs, worldNormals, uvs, MAXDEPTH);
         if (bvhDisplayer != null)
         {
             bvhDisplayer.Display(bvh);

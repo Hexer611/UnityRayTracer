@@ -7,13 +7,16 @@ public static class RayTracedMeshUtils
     public static int MAXDEPTH = 32;
     public static Dictionary<Mesh, BVH> MeshBVHPairs = new Dictionary<Mesh, BVH>();
     public static Dictionary<MeshRenderer, RayTracedMesh> MeshPairs = new Dictionary<MeshRenderer, RayTracedMesh>();
+    public static Dictionary<Texture2D, int> textureIndices = new Dictionary<Texture2D, int>();
 
-    public static RayTracedMesh[] GetRaytracedMeshesFromScene(LayerMask cameraMask, out List<SBVHNode> nodes, out List<ShaderTriangle> tris, out List<SPMesh> meshes)
+    public static RayTracedMesh[] GetRaytracedMeshesFromScene(LayerMask cameraMask, out List<SBVHNode> nodes, out List<ShaderTriangle> tris, out List<SPMesh> meshes,
+        out List<Texture2D> textures)
     {
         var meshTransforms = new List<RayTracedMesh>();
         nodes = new List<SBVHNode>();
         tris = new List<ShaderTriangle>();
         meshes = new List<SPMesh>();
+        textures = new List<Texture2D>();
 
         //return meshTransforms.ToArray();
 
@@ -43,6 +46,7 @@ public static class RayTracedMeshUtils
         int lastTrigIndex = 0;
         int curTriangleIndex = 0;
         int curNodeIndex = 0;
+        int currentTextureIndex = 0;
 
         foreach (var meshTransform in meshTransforms)
         {
@@ -54,13 +58,35 @@ public static class RayTracedMeshUtils
 
             newMesh.nodesStartIndex = curNodeIndex;
 
-            newMesh.material.color = meshTransform.color;
-            newMesh.material.emissionColor = meshTransform.emissionColor;
-            newMesh.material.emissionStrength = meshTransform.emissionStrength;
-            newMesh.material.smoothness = meshTransform.smoothness;
-            newMesh.material.specularProbability = meshTransform.specularProbability;
-            newMesh.material.specularColor = meshTransform.specularColor;
-            newMesh.material.opacity = meshTransform.opacity;
+            var material = meshTransform.meshRenderer.sharedMaterial;
+
+            newMesh.material.color = material.GetColor("_BaseColor");
+            newMesh.material.emissionColor = material.GetColor("_EmissionColor");
+            newMesh.material.emissionStrength = material.GetFloat("_EmissiveIntensity");
+            newMesh.material.smoothness = material.GetFloat("_Smoothness");
+            newMesh.material.specularProbability = material.GetFloat("_Smoothness");
+            newMesh.material.specularColor = Color.white;
+            newMesh.material.opacity = 0;
+            //newMesh.material.opacity = 1 - material.GetColor("_Color").a;
+
+            var curDiffuse = material.GetTexture("_BaseMap") as Texture2D;
+            Debug.Log(curDiffuse == null);
+            if (curDiffuse == null || curDiffuse.width != 2048 || curDiffuse.height != 2048)
+                newMesh.material.diffuseIndex = -1;
+            else
+            {
+                if (textureIndices.ContainsKey(curDiffuse))
+                {
+                    newMesh.material.diffuseIndex = textureIndices[curDiffuse];
+                }
+                else
+                {
+                    newMesh.material.diffuseIndex = currentTextureIndex;
+                    textures.Add(curDiffuse);
+                    textureIndices.Add(curDiffuse, currentTextureIndex);
+                    currentTextureIndex++;
+                }
+            }
 
             lastTrigIndex += newMesh.trigCount;
 
@@ -99,14 +125,6 @@ public static class RayTracedMeshUtils
         }
 
         rayTracedMesh.bvh = meshBVH;
-        var material = target.sharedMaterial;
-        rayTracedMesh.color = material.GetColor("_Color");
-        rayTracedMesh.smoothness = 1;
-        rayTracedMesh.specularProbability = material.GetFloat("_Glossiness");
-        rayTracedMesh.specularColor = Color.white;
-        rayTracedMesh.opacity = 1 - material.GetColor("_Color").a;
-        rayTracedMesh.emissionColor = material.GetColor("_EmissionColor");
-        rayTracedMesh.emissionStrength = 1;
 
         rayTracedMesh.meshFilter = meshFilter;
         rayTracedMesh.meshRenderer = target;
@@ -116,6 +134,7 @@ public static class RayTracedMeshUtils
         rayTracedMesh.triangles = meshFilter.sharedMesh.triangles;
         rayTracedMesh.vertices = meshFilter.sharedMesh.vertices;
         rayTracedMesh.normals = meshFilter.sharedMesh.normals;
+        rayTracedMesh.uvs = meshFilter.sharedMesh.uv;
 
         rayTracedMesh.triangleCount = meshFilter.sharedMesh.triangles.Length;
         rayTracedMesh.vertexCount = meshFilter.sharedMesh.vertices.Length;
@@ -128,6 +147,7 @@ public static class RayTracedMeshUtils
         var mesh = meshFilter.sharedMesh;
         var trigs = mesh.triangles;
         var verts = mesh.vertices;
+        var uvs = mesh.uv;
         var normals = mesh.normals;
 
         var triangleCount = trigs.Length;
@@ -153,6 +173,6 @@ public static class RayTracedMeshUtils
             worldNormals[i3] = rot * normals[i3];
         }
 
-        meshBVH = new BVH(worldVertices, trigs, worldNormals, MAXDEPTH);
+        meshBVH = new BVH(worldVertices, trigs, worldNormals, uvs, MAXDEPTH);
     }
 }
