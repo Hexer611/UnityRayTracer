@@ -36,7 +36,7 @@ public class RayTracedMesh
     public Transform rayGo;
 
     public MeshFilter meshFilter;
-    public MeshRenderer meshRenderer;
+    public Material material;
     public Transform transform;
 
     public void Initialize()

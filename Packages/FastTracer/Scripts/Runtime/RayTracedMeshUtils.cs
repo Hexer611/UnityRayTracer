@@ -1,6 +1,8 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 public static class RayTracedMeshUtils
 {
@@ -23,25 +25,26 @@ public static class RayTracedMeshUtils
 
         foreach (var item in GameObject.FindObjectsOfType<MeshRenderer>())
         {
-            if (item.GetComponent<MeshFilter>() == null)
-                continue;
             if (!item.gameObject.activeInHierarchy)
                 continue;
             if (!item.enabled)
                 continue;
             if ((cameraMask & (1 << item.gameObject.layer)) == 0)
                 continue;
-            RayTracedMesh rMesh = null;
-            rMesh = GetRTMFromMeshRenderer(item);
+            var meshFilter = item.GetComponent<MeshFilter>();
+            if (meshFilter == null)
+                continue;
+            List<RayTracedMesh> rMeshes = null;
+            rMeshes = GetRTMFromMeshRenderer(item);
 
             //MeshPairs.TryGetValue(item, out rMesh);
 
-            if (rMesh == null)
+            if (rMeshes == null)
             {
                 //MeshPairs.Add(item, rMesh);
             }
 
-            meshTransforms.Add(rMesh);
+            meshTransforms.AddRange(rMeshes);
         }
 
         int lastTrigIndex = 0;
@@ -59,7 +62,7 @@ public static class RayTracedMeshUtils
 
             newMesh.nodesStartIndex = curNodeIndex;
 
-            var material = meshTransform.meshRenderer.sharedMaterial;
+            var material = meshTransform.material;
             Texture2D curDiffuse;
 
             if (material.HasTexture("_FabricBaseMap"))
@@ -78,7 +81,10 @@ public static class RayTracedMeshUtils
             {
                 newMesh.material.color = material.GetColor("_BaseColor");
                 newMesh.material.emissionColor = material.GetColor("_EmissionColor");
-                newMesh.material.emissionStrength = material.GetFloat("_EmissiveIntensity");
+                if (material.HasProperty("_EmissiveIntensity"))
+                    newMesh.material.emissionStrength = material.GetFloat("_EmissiveIntensity");
+                else
+                    newMesh.material.emissionStrength = 1;
                 newMesh.material.smoothness = material.GetFloat("_Smoothness");
                 newMesh.material.specularProbability = material.GetFloat("_Smoothness");
                 newMesh.material.specularColor = Color.white;
@@ -129,39 +135,52 @@ public static class RayTracedMeshUtils
         return meshTransforms.ToArray();
     }
 
-    public static RayTracedMesh GetRTMFromMeshRenderer(MeshRenderer target)
+    public static List<RayTracedMesh> GetRTMFromMeshRenderer(MeshRenderer target)
     {
         var meshFilter = target.GetComponent<MeshFilter>();
-        var rayTracedMesh = new RayTracedMesh();
+        var rMeshes = new List<RayTracedMesh>();
         BVH meshBVH = null;
         //MeshBVHPairs.TryGetValue(meshFilter.sharedMesh, out meshBVH);
+
         if (meshBVH == null)
         {
-            GetBVHFromMesh(meshFilter, out meshBVH);
+            if (meshFilter.sharedMesh.subMeshCount == 1 || target.sharedMaterials.Length == 1)
+            {
+                var rayTracedMesh = new RayTracedMesh();
+                GetBVHFromMesh(meshFilter.sharedMesh, meshFilter.transform, out meshBVH);
+
+                rayTracedMesh.bvh = meshBVH;
+
+                rayTracedMesh.material = target.sharedMaterial;
+                rMeshes.Add(rayTracedMesh);
+            }
+            else if (meshFilter.sharedMesh.subMeshCount == target.sharedMaterials.Length)
+            {
+                for (int i = 0; i < meshFilter.sharedMesh.subMeshCount; i++)
+                {
+                    var curSubMesh = meshFilter.sharedMesh.GetSubMesh(i);
+                    var rayTracedMesh = new RayTracedMesh();
+                    GetBVHFromSubMesh(meshFilter.sharedMesh, curSubMesh, meshFilter.transform, out meshBVH);
+
+                    rayTracedMesh.bvh = meshBVH;
+                    rayTracedMesh.material = target.sharedMaterials[i];
+
+                    rMeshes.Add(rayTracedMesh);
+                }
+            }
+            else
+            {
+                Debug.LogError("Mesh count and material count is a problem here");
+                Debug.LogError("Mesh count : " + meshFilter.sharedMesh.subMeshCount + " Material Count : " + target.sharedMaterials.Length);
+            }
             //MeshBVHPairs.Add(meshFilter.sharedMesh, meshBVH);
         }
 
-        rayTracedMesh.bvh = meshBVH;
-
-        rayTracedMesh.meshFilter = meshFilter;
-        rayTracedMesh.meshRenderer = target;
-        rayTracedMesh.transform = target.transform;
-
-        rayTracedMesh.mesh = meshFilter.sharedMesh;
-        rayTracedMesh.triangles = meshFilter.sharedMesh.triangles;
-        rayTracedMesh.vertices = meshFilter.sharedMesh.vertices;
-        rayTracedMesh.normals = meshFilter.sharedMesh.normals;
-        rayTracedMesh.uvs = meshFilter.sharedMesh.uv;
-
-        rayTracedMesh.triangleCount = meshFilter.sharedMesh.triangles.Length;
-        rayTracedMesh.vertexCount = meshFilter.sharedMesh.vertices.Length;
-
-        return rayTracedMesh;
+        return rMeshes;
     }
 
-    public static void GetBVHFromMesh(MeshFilter meshFilter, out BVH meshBVH)
+    public static void GetBVHFromMesh(Mesh mesh, Transform meshTransform, out BVH meshBVH)
     {
-        var mesh = meshFilter.sharedMesh;
         var trigs = mesh.triangles;
         var verts = mesh.vertices;
         var uvs = mesh.uv;
@@ -173,7 +192,7 @@ public static class RayTracedMeshUtils
         var worldVertices = new Vector3[vertexCount];
         var worldNormals = new Vector3[vertexCount];
 
-        Quaternion rot = meshFilter.transform.rotation;
+        Quaternion rot = meshTransform.rotation;
 
         for (int j = 0; j < triangleCount; j += 3)
         {
@@ -181,9 +200,57 @@ public static class RayTracedMeshUtils
             var i2 = trigs[j + 1];
             var i3 = trigs[j + 2];
 
-            worldVertices[i1] = meshFilter.transform.TransformPoint(verts[i1]);
-            worldVertices[i2] = meshFilter.transform.TransformPoint(verts[i2]);
-            worldVertices[i3] = meshFilter.transform.TransformPoint(verts[i3]);
+            worldVertices[i1] = meshTransform.TransformPoint(verts[i1]);
+            worldVertices[i2] = meshTransform.TransformPoint(verts[i2]);
+            worldVertices[i3] = meshTransform.TransformPoint(verts[i3]);
+
+            worldNormals[i1] = rot * normals[i1];
+            worldNormals[i2] = rot * normals[i2];
+            worldNormals[i3] = rot * normals[i3];
+        }
+
+        meshBVH = new BVH(worldVertices, trigs, worldNormals, uvs, MAXDEPTH);
+    }
+
+    public static void GetBVHFromSubMesh(Mesh mesh, SubMeshDescriptor subMesh, Transform meshTransform, out BVH meshBVH)
+    {
+        //var trigs = mesh.triangles;
+        int[] trigs = new int[subMesh.indexCount];
+        Array.Copy(mesh.triangles, subMesh.indexStart, trigs, 0, subMesh.indexCount);
+
+        //var verts = mesh.vertices;
+        Vector3[] verts = new Vector3[subMesh.vertexCount];
+        Array.Copy(mesh.vertices, subMesh.firstVertex, verts, 0, subMesh.vertexCount);
+
+        //var uvs = mesh.uv;
+        Vector2[] uvs = new Vector2[subMesh.vertexCount];
+        Array.Copy(mesh.uv, subMesh.firstVertex, uvs, 0, subMesh.vertexCount);
+
+        //var normals = mesh.normals;
+        Vector3[] normals = new Vector3[subMesh.vertexCount];
+        Array.Copy(mesh.normals, subMesh.firstVertex, normals, 0, subMesh.vertexCount);
+
+        var triangleCount = trigs.Length;
+        var vertexCount = verts.Length;
+
+        var worldVertices = new Vector3[vertexCount];
+        var worldNormals = new Vector3[vertexCount];
+
+        Quaternion rot = meshTransform.rotation;
+
+        for (int j = 0; j < triangleCount; j += 3)
+        {
+            trigs[j] -= subMesh.firstVertex;
+            trigs[j + 1] -= subMesh.firstVertex;
+            trigs[j + 2] -= subMesh.firstVertex;
+
+            var i1 = trigs[j];
+            var i2 = trigs[j + 1];
+            var i3 = trigs[j + 2];
+
+            worldVertices[i1] = meshTransform.TransformPoint(verts[i1]);
+            worldVertices[i2] = meshTransform.TransformPoint(verts[i2]);
+            worldVertices[i3] = meshTransform.TransformPoint(verts[i3]);
 
             worldNormals[i1] = rot * normals[i1];
             worldNormals[i2] = rot * normals[i2];
