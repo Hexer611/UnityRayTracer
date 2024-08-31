@@ -418,8 +418,6 @@ Shader "Custom/RayTracingShader"
 
 						float3 emittedLight =  material.emissionColor * material.emissionStrength;
 						float3 matColor = lerp(material.color, material.specularColor, isSpecularBounce);
-						// TODO: Add check for gamma correction
-						matColor = pow(matColor, 1.0/2.2);
 						rayColor *= matColor;
 						
 						float p = max(rayColor.r, max(rayColor.g, rayColor.b));
@@ -441,7 +439,10 @@ Shader "Custom/RayTracingShader"
 						break;
 					}
 				}
-				
+
+				// TODO: Add check for gamma correction
+				incomingLight = pow(incomingLight, 1.0/2.2);
+
 				float boxVis = stats[0] / _boxThreshold;
 				float triVis = stats[1] / _triThreshold;
 
