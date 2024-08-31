@@ -238,6 +238,7 @@ public struct SPMaterial
     public float specularProbability;
     public Color specularColor;
     public float opacity;
+    public float shadowsOnly;
 
     public float diffuseIndex;
 }

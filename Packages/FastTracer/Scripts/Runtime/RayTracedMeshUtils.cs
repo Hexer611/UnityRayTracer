@@ -92,8 +92,8 @@ public static class RayTracedMeshUtils
                 //newMesh.material.opacity = 1 - material.GetColor("_Color").a;
                 curDiffuse = material.GetTexture("_BaseMap") as Texture2D;
             }
+            newMesh.material.shadowsOnly = meshTransform.shadowsOnly ? 1 : 0;
 
-            Debug.Log(curDiffuse == null);
             if (curDiffuse == null)
                 newMesh.material.diffuseIndex = -1;
             else
@@ -150,8 +150,9 @@ public static class RayTracedMeshUtils
                 GetBVHFromMesh(meshFilter.sharedMesh, meshFilter.transform, out meshBVH);
 
                 rayTracedMesh.bvh = meshBVH;
-
                 rayTracedMesh.material = target.sharedMaterial;
+                rayTracedMesh.shadowsOnly = target.shadowCastingMode == ShadowCastingMode.ShadowsOnly;
+
                 rMeshes.Add(rayTracedMesh);
             }
             else if (meshFilter.sharedMesh.subMeshCount == target.sharedMaterials.Length)

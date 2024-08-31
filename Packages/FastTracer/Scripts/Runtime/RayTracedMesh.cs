@@ -13,6 +13,7 @@ public class RayTracedMesh
     public float specularProbability;
     public Color specularColor;
     public float opacity;
+    public bool shadowsOnly = false;
 
     public Mesh mesh;
     public int[] triangles;

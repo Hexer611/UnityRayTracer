@@ -67,6 +67,7 @@ Shader "Custom/RayTracingShader"
 				float specularProbability;
 				float4 specularColor;
 				float opacity;
+				float shadowsOnly;
 				float diffuseIndex;
 			};
 			
@@ -301,12 +302,12 @@ Shader "Custom/RayTracingShader"
 				return hitInfo;
 			}
 
-			HitInfo CalculateRayCollision (Ray ray, inout int2 stats, bool hasHit)
+			HitInfo CalculateRayCollision (Ray ray, inout int2 stats, int bounceCount)
 			{
 				HitInfo closestHit = (HitInfo)0;
 				closestHit.dst = 1.#INF;
 
-				if (hasHit) // This is point light maan
+				if (bounceCount == 0) // This is point light maan
 				{
 					Sphere sphere = Spheres[0];
 					HitInfo hitInfo = RaySphere(ray, sphere.position, sphere.radius);
@@ -333,6 +334,8 @@ Shader "Custom/RayTracingShader"
 				for (int i = 0; i < NumMeshes; i++)
 				{
 					MeshInfo meshInfo = Meshes[i];
+					if (meshInfo.material.shadowsOnly == 1 && bounceCount == 0)
+						continue;
 					BVHNode firstNode = Nodes[meshInfo.nodesStartIndex];
 
 					HitInfo hitInfo = BVHRayCollision(meshInfo.nodesStartIndex, ray, stats);
@@ -351,6 +354,8 @@ Shader "Custom/RayTracingShader"
 				float skyGradientT = pow(smoothstep(0, 0.4, ray.dir.y), 0.35);
 				float3 skyGradient = lerp(SkyColorHorizon, SkyColorZenith, skyGradientT);
 				float sun = pow(max(0, dot(ray.dir, -SunLightDirection)), 2) * SunIntensity;
+				// TODO: Find a fix for better sun light intensity
+				sun = max(SunIntensity, 0.5);
 
 				float groundToSkyT = smoothstep(-0.01, 0, ray.dir.y);
 				return lerp(GroundColor, skyGradient, groundToSkyT) * EnvironmentIntensity + sun * SunColor;
@@ -378,7 +383,7 @@ Shader "Custom/RayTracingShader"
 
 				for (int i = 0; i <= 6; i++)
 				{
-					HitInfo hitInfo = CalculateRayCollision(ray, stats, hasHit);
+					HitInfo hitInfo = CalculateRayCollision(ray, stats, i);
 
 					if (hitInfo.didHit)
 					{
@@ -412,15 +417,17 @@ Shader "Custom/RayTracingShader"
 						ray.origin += ray.dir * 0.00001f;
 
 						float3 emittedLight =  material.emissionColor * material.emissionStrength;
-						incomingLight += emittedLight * rayColor;
-
-						rayColor *= lerp(material.color, material.specularColor, isSpecularBounce);
+						float3 matColor = lerp(material.color, material.specularColor, isSpecularBounce);
+						// TODO: Add check for gamma correction
+						matColor = pow(matColor, 1.0/2.2);
+						rayColor *= matColor;
 						
 						float p = max(rayColor.r, max(rayColor.g, rayColor.b));
 						if (RandomValue(rngState) >= p) {
 							break;
 						}
 						rayColor *= 1.0f / p;
+						
 						hasHit = true;
 					}
 					else
@@ -431,6 +438,7 @@ Shader "Custom/RayTracingShader"
 						else
 							incomingLight += GetEnvironmentBackGround(ray);
 						*/
+						break;
 					}
 				}
 				
