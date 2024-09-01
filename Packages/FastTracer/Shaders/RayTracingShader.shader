@@ -387,6 +387,7 @@ Shader "Custom/RayTracingShader"
 
 					if (hitInfo.didHit)
 					{
+						//return hitInfo.normal / 2.0 + float3(0.5,0.5,0.5); // TODO: For AOV-Normal
 						ray.origin = hitInfo.hitPoint;
 						//Triangle tri = hitInfo.hitTriangle;
 						//hitInfo.material.color = tex2D(_Diffuse, normalize(tri.uvA * hitInfo.w + tri.uvB * hitInfo.u + tri.uvC * hitInfo.v));
@@ -394,6 +395,7 @@ Shader "Custom/RayTracingShader"
 							hitInfo.material.color = hitInfo.material.color;
 						else
 							hitInfo.material.color = UNITY_SAMPLE_TEX2DARRAY(_textures, float3(hitInfo.uv.x, hitInfo.uv.y, hitInfo.material.diffuseIndex));
+						//return hitInfo.material.color; // TODO: For AOV-Diffuse
 						//hitInfo.material.color = float4(hitInfo.uv, 1, 1);
 						RayTracingMaterial material = hitInfo.material;
 
